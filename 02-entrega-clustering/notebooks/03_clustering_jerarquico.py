@@ -2,14 +2,7 @@
 # CLUSTERING JERÁRQUICO - Segmentación de clientes E-commerce
 # MP6 - Proyecto IA y Big Data | Tema 3
 # =============================================================================
-# Notebook centrado en el modelo de Clustering Jerárquico (AgglomerativeClustering).
-# Parte de un CSV de clientes YA LIMPIO (limpieza común del grupo).
-# Aplica: escalado, encoding, PCA, búsqueda de K óptimo, modelo final,
-# evaluación, visualización e interpretación.
-#
-# Pensado para ejecutar en Google Colab celda a celda (cada bloque "# %%"
-# puede ser una celda).
-# =============================================================================
+
 
 
 # %% [1] IMPORTS
