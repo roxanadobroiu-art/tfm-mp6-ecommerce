@@ -118,9 +118,12 @@ Los scripts generan en local:
 
 ## 👥 Equipo
 
-**Grupo H1** — Módulo MP6 — Máster en IA y Big Data.
+**Grupo H1** — Módulo MP6 — Máster en IA y Big Data
 
----
+- Paula Ruiz de la Parra (portavoz)
+- Elena Roxana Dobroiu
+- Julián David Dionisio Rey
+- Javier Santos Rodriguez
 
 ## 📜 Licencia
 
