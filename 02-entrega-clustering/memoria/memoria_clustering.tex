@@ -1,0 +1,1126 @@
+% =============================================================================
+% Memoria del proyecto de clustering - MP6
+% Tema 3 - Proyecto de IA y Big Data
+% =============================================================================
+% Estructura y estilo replicados de la memoria de regresión (Tema 2).
+% Compilar con pdflatex / lualatex.
+% =============================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{caption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    frame=single,
+    rulecolor=\color{gray!50},
+    backgroundcolor=\color{gray!5},
+    language=Python,
+    extendedchars=true,
+    inputencoding=utf8,
+    literate=
+        {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+        {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+        {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ç}{{\c{c}}}1 {Ç}{{\c{C}}}1
+        {ü}{{\"u}}1 {Ü}{{\"U}}1 {¿}{{?`}}1 {¡}{{!`}}1
+}
+
+\title{Memoria del proyecto de clustering \\
+       \large Segmentación de clientes en e-commerce}
+\author{Módulo MP6 — Proyecto de IA y Big Data \\
+        Máster en IA y Big Data}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section*{Parte I — Preprocesado de datos}
+\addcontentsline{toc}{section}{Parte I — Preprocesado de datos}
+
+\section{Introducción y contexto}
+
+El objetivo de este proyecto es segmentar a los clientes de una tienda de \textit{e-commerce} del Reino Unido. Se utiliza el mismo dataset que en el proyecto de regresión (\textit{E-Commerce Data}, Kaggle / UCI), que recoge las transacciones realizadas entre diciembre de 2010 y diciembre de 2011. A diferencia del proyecto anterior, aquí no hay variable objetivo: el aprendizaje es no supervisado y se utiliza el dataset completo, sin separación en \textit{train} / \textit{test}.
+
+La estrategia de preprocesado parte de la \textbf{limpieza realizada en la fase anterior}, pero da un paso más: convierte el dataset transaccional en un dataset \textbf{centrado en clientes}, donde cada fila representa a un único usuario con un conjunto de variables agregadas que describen su comportamiento de compra. Este nuevo dataset es el punto de partida del proceso descrito en esta parte.
+
+Sobre el dataset de usuarios se aplica un preprocesado adicional: detección de \textit{outliers}, codificación de variables categóricas, escalado y reducción de dimensionalidad. La limpieza de \textit{outliers} se realiza sobre el dataset centrado en usuarios, una vez agregadas las transacciones por cliente.
+
+\section{Carga del dataset centrado en clientes}
+
+El \textit{script} de limpieza desarrollado en la fase anterior parte del dataset transaccional original, aplica los filtros de la primera entrega (eliminación de duplicados, notas de crédito, filas sin \texttt{id\_cliente} y precios no válidos) y construye un nuevo dataset a nivel de cliente. Este último paso es el más relevante para el proyecto de \textit{clustering}: se itera sobre cada cliente único y se calculan sus variables agregadas a partir de todas sus transacciones.
+
+\begin{lstlisting}
+# Generación del dataset centrado en clientes
+clientes_vars = []
+for cliente_id in df["id_cliente"].unique():
+    cliente_data = df[df["id_cliente"] == cliente_id].copy()
+
+    variables_cliente = {
+        "id_cliente": cliente_id,
+        "total_compras": len(cliente_data),
+        "total_productos_diferentes": cliente_data["codigo_producto"].nunique(),
+        "valor_total_compras": cliente_data["importe_linea"].sum(),
+        "valor_medio_por_compra": cliente_data["importe_linea"].mean(),
+        "dias_como_cliente": (cliente_data["fecha"].max()
+                              - cliente_data["fecha"].min()).days + 1,
+        "pais_principal": cliente_data["pais"].mode().iloc[0],
+        # ... (resto de variables agregadas)
+    }
+    clientes_vars.append(variables_cliente)
+
+df_clientes = pd.DataFrame(clientes_vars)
+\end{lstlisting}
+
+\noindent Por cada usuario único se calculan así 30 variables agrupadas en bloques temáticos:
+
+\begin{itemize}
+    \item \textbf{Volumen de compras}: \texttt{total\_compras}, \texttt{total\_productos\_diferentes}, \texttt{total\_facturas}.
+    \item \textbf{Valor monetario}: \texttt{valor\_total\_compras}, \texttt{valor\_medio\_por\_compra}, \texttt{valor\_mediano\_por\_compra}, \texttt{precio\_unitario\_medio}.
+    \item \textbf{Cantidad}: \texttt{cantidad\_total\_productos}, \texttt{cantidad\_media\_por\_compra}.
+    \item \textbf{Temporales}: \texttt{primer\_compra}, \texttt{ultima\_compra}, \texttt{dias\_como\_cliente}.
+    \item \textbf{Frecuencia y comportamiento}: \texttt{dia\_semana\_favorito}, \texttt{hora\_favorita}, \texttt{frecuencia\_compra}, \texttt{tiempo\_medio\_entre\_compras}, \texttt{tiempo\_mediano\_entre\_compras}.
+    \item \textbf{Geográficas}: \texttt{pais\_principal}, \texttt{paises\_diferentes}.
+    \item \textbf{Comportamiento semanal}: \texttt{compras\_fines\_semana}, \texttt{porcentaje\_compras\_fines\_semana}.
+    \item \textbf{Estacionalidad}: \texttt{mes\_mas\_activo}, \texttt{meses\_diferentes\_compra}, \texttt{meses\_activo}.
+    \item \textbf{Diversidad de productos}: \texttt{categorias\_productos\_diferentes}, \texttt{categoria\_favorita}, \texttt{diversidad\_categorias}.
+    \item \textbf{Mensuales}: \texttt{valor\_mensual\_medio}, \texttt{compras\_mensuales\_medias}.
+\end{itemize}
+
+Una variable que merece especial atención es \texttt{categoria\_favorita}, ya que el dataset original no incluye una categorización explícita de los productos. Para generarla, el \textit{script} de limpieza clasifica cada transacción en una categoría temática a partir de palabras clave en la descripción del producto:
+
+\begin{lstlisting}
+def categorizar_producto(descripcion):
+    desc_lower = str(descripcion).lower()
+    if any(word in desc_lower for word in ["christmas", "xmas", "santa"]):
+        return "navidad"
+    elif any(word in desc_lower for word in ["heart", "love", "valentine"]):
+        return "romantico"
+    elif any(word in desc_lower for word in ["baby", "bab", "child"]):
+        return "bebe"
+    elif any(word in desc_lower for word in ["birthday", "cake", "party"]):
+        return "cumpleanos"
+    elif any(word in desc_lower for word in ["postage", "carriage", "manual"]):
+        return "no_producto"
+    else:
+        return "otros"
+\end{lstlisting}
+
+\noindent Esta clasificación es relevante para el proyecto porque introduce una de las pocas variables categóricas del dataset, que más adelante se codificará mediante \textit{One-Hot} (Sección~\ref{sec:onehot}).
+
+El dataset resultante se carga directamente desde el archivo exportado por el \textit{script} de limpieza:
+
+\begin{lstlisting}
+RUTA_CSV = "dataset_clientes_clustering.csv"
+df = pd.read_csv(RUTA_CSV)
+print(f"Dataset cargado: {df.shape[0]} clientes, {df.shape[1]} variables")
+\end{lstlisting}
+
+\noindent$\rightarrow$ Estado inicial del dataset de clientes: \textbf{4.339 clientes} y \textbf{30 variables}.
+
+
+\section{Resumen del preprocesado común}
+
+La fase de preprocesado común al grupo deja como resultado el dataset \texttt{dataset\_clientes\_clustering.csv}, con las siguientes características:
+
+\begin{itemize}
+    \item \textbf{Filas (clientes)}: 4.339 clientes únicos, agregados a partir de las transacciones del dataset original.
+    \item \textbf{Columnas}: 30 variables que cubren volumen de compras, valor monetario, comportamiento temporal, geografía y diversidad de productos.
+    \item \textbf{Variables categóricas}: \texttt{pais\_principal} y \texttt{categoria\_favorita}.
+    \item \textbf{Variables numéricas}: las 28 restantes.
+\end{itemize}
+
+Este dataset es el punto de partida común para los tres modelos de \textit{clustering} descritos en la Parte II (Jerárquico, K-Means y DBSCAN). Cada modelo aplicará a continuación su propio preprocesado específico, en función de las particularidades del algoritmo y de las variables que mejor exploten su lógica interna.
+
+% =============================================================================
+\section*{Parte II — Modelos de clustering}
+\addcontentsline{toc}{section}{Parte II — Modelos de clustering}
+
+\section{Planteamiento}
+
+A diferencia del proyecto de regresión, este es un problema de aprendizaje \textbf{no supervisado}: no existe variable objetivo y no es posible separar el dataset en \textit{train} y \textit{test}. Todo el dataset preprocesado se utiliza para entrenar cada modelo. La evaluación se basa en métricas internas de calidad del \textit{clustering} y, sobre todo, en la \textbf{interpretabilidad de los grupos obtenidos}, que es el criterio de éxito real desde el punto de vista de negocio.
+
+En esta parte se documentan cuatro modelos de \textit{clustering}, cada uno con su propio preprocesado específico aplicado sobre el dataset común generado en la Parte I:
+
+\begin{itemize}
+    \item \textbf{K-Means} (Sección~\ref{sec:kmeans}): algoritmo basado en centroides con un número de \textit{clusters} fijado a priori.
+    \item \textbf{Clustering Jerárquico} (Sección~\ref{sec:jerarquico}): algoritmo aglomerativo basado en un dendrograma de fusiones sucesivas.
+    \item \textbf{DBSCAN} (Sección~\ref{sec:dbscan}): algoritmo basado en densidad, capaz de detectar \textit{clusters} de forma arbitraria y de identificar puntos atípicos.
+    \item \textbf{HDBSCAN} (Sección~\ref{sec:hdbscan}): variante jerárquica de DBSCAN que detecta automáticamente \textit{clusters} de densidades variables.
+\end{itemize}
+
+Las métricas utilizadas son fundamentalmente tres: el \textbf{índice de silueta} (rango $[-1, 1]$, mayor mejor), el \textbf{índice de Davies-Bouldin} (rango $[0, \infty)$, menor mejor) y el \textbf{índice de Calinski-Harabasz} (mayor mejor). Algunos modelos incorporan métricas adicionales (porcentaje de ruido, equilibrio de \textit{clusters}) cuando son relevantes para su lógica interna. Adicionalmente se inspeccionan los tamaños de los \textit{clusters}, ya que una segmentación con un grupo que concentre la práctica totalidad de los clientes no aporta valor de negocio, por mucho que sus métricas sean buenas.
+
+\section{Modelo K-Means}
+\label{sec:kmeans}
+
+\subsection{Preprocesado específico para K-Means}
+
+Sobre el dataset común generado en la Parte I (4.339 clientes, 30 variables) se aplica un preprocesado específico para adaptarlo a las particularidades del algoritmo K-Means, que es sensible a valores atípicos y depende fuertemente del escalado de variables. Los pasos son: transformación logarítmica, imputación de valores faltantes, escalado y codificación, eliminación de \textit{outliers}, y reducción de dimensionalidad mediante PCA.
+
+\subsubsection{Transformación logarítmica}
+
+Muchas variables numéricas presentan distribuciones muy asimétricas con valores extremos elevados. Para reducir esta asimetría se aplica una transformación $x' = \log(1+x)$ a las principales variables de comportamiento (compras, valor, cantidad, frecuencia, recencia). Esta transformación reduce el impacto de clientes extremadamente grandes y mejora la estabilidad del clustering.
+
+\subsubsection{Imputación, escalado y codificación}
+
+Las variables numéricas se escalan con \texttt{RobustScaler}, menos sensible a valores extremos que \texttt{StandardScaler}, lo que es esencial porque K-Means utiliza distancias euclidianas. Las variables categóricas (\texttt{pais\_principal}, \texttt{categoria\_favorita}, \texttt{dia\_semana\_favorito}, \texttt{hora\_favorita}) se transforman mediante \texttt{OneHotEncoder}.
+
+\begin{lstlisting}
+preprocesador = ColumnTransformer([
+    ("num", RobustScaler(), columnas_numericas),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), columnas_categoricas),
+])
+
+X = preprocesador.fit_transform(df)
+\end{lstlisting}
+
+\subsubsection{Reducción de dimensionalidad mediante PCA}
+
+Tras el escalado y codificación se aplica PCA con \textbf{10 componentes principales}, que conservan el \textbf{91,8\,\% de la varianza} total del dataset. Esta reducción cumple un doble papel: por un lado, elimina la redundancia entre variables y mejora la separabilidad de los \textit{clusters} en el espacio reducido; por otro, hace que la posterior detección de \textit{outliers} y el clustering operen sobre un espacio compacto y más informativo.
+
+\begin{lstlisting}
+pca = PCA(n_components=10, random_state=42)
+X_pca = pca.fit_transform(X.toarray() if hasattr(X, "toarray") else X)
+\end{lstlisting}
+
+\subsubsection{Eliminación de outliers con LOF}
+
+Sobre el espacio PCA reducido se aplica \textit{Local Outlier Factor} (LOF), un detector de anomalías basado en densidad local. Compara la densidad de cada punto con la de sus vecinos más cercanos y marca como atípicos aquellos cuya densidad local es notablemente menor. Se configura con \texttt{n\_neighbors=20} y \texttt{contamination=0.03} (3\,\% de los clientes esperados como atípicos).
+
+\begin{lstlisting}
+from sklearn.neighbors import LocalOutlierFactor
+
+lof = LocalOutlierFactor(n_neighbors=20, contamination=0.03)
+labels_lof = lof.fit_predict(X_pca)
+mask = labels_lof == 1
+X_modelo = X_pca[mask]
+df_modelo = df[mask].copy()
+\end{lstlisting}
+
+\noindent$\rightarrow$ Tras la eliminación de \textit{outliers}, el dataset queda con \textbf{4.208 clientes} (un 3\,\% eliminado del dataset original de 4.339), igualmente listos para el \textit{clustering} sobre el espacio PCA de 10 dimensiones.
+
+\subsection{Descripción del modelo}
+
+K-Means es un algoritmo de aprendizaje no supervisado utilizado para realizar tareas de \textit{clustering} o segmentación de datos. Su objetivo principal es dividir un conjunto de observaciones en un número determinado de grupos (\textit{clusters}), de forma que los elementos dentro de cada grupo sean lo más similares posible entre sí y lo más diferentes posible respecto a los elementos de otros grupos.
+
+El algoritmo funciona mediante un proceso iterativo basado en distancias. Inicialmente selecciona de manera aleatoria un conjunto de centroides, uno por cada \textit{cluster} definido. Posteriormente, cada punto del dataset se asigna al centroide más cercano utilizando normalmente la distancia euclidiana. Una vez asignados todos los puntos, el algoritmo recalcula los centroides como la media de todos los puntos pertenecientes a cada \textit{cluster}. Este proceso se repite hasta alcanzar la convergencia, es decir, hasta que las asignaciones dejan de cambiar o las variaciones son mínimas.
+
+K-Means es uno de los algoritmos de \textit{clustering} más utilizados debido a su simplicidad, rapidez y facilidad de interpretación. Sin embargo, presenta algunas limitaciones importantes: requiere definir previamente el número de \textit{clusters} $k$, es sensible a los valores atípicos y asume que los grupos tienen una forma aproximadamente esférica y tamaños similares.
+
+En este proyecto, el algoritmo se complementa con un proceso previo de detección y eliminación de \textit{outliers} mediante \textit{Local Outlier Factor} (LOF), reduciendo así el impacto negativo de clientes extremadamente atípicos sobre los centroides y mejorando la estabilidad de la segmentación.
+
+\subsubsection{Qué hace en este proyecto}
+
+K-Means se aplica a la segmentación de clientes con el objetivo de identificar grupos homogéneos de comportamiento que permitan personalizar estrategias de \textit{marketing}, promociones y acciones comerciales. El \textit{pipeline} realiza varias etapas consecutivas:
+
+\begin{itemize}
+    \item Preparación y transformación de variables (transformación logarítmica de variables asimétricas).
+    \item Escalado de variables numéricas y codificación de categóricas.
+    \item Reducción de dimensionalidad mediante PCA de 10 componentes para mejorar la estabilidad del \textit{clustering} y reducir el ruido dimensional.
+    \item Detección y eliminación de \textit{outliers} mediante LOF.
+    \item Búsqueda automática del número óptimo de \textit{clusters} usando métricas internas de calidad.
+    \item Entrenamiento del modelo final K-Means.
+    \item Reducción de dimensionalidad a 2 componentes exclusivamente para visualización gráfica.
+    \item Generación de métricas, visualizaciones y resúmenes estadísticos de cada segmento.
+    \item Exportación de los resultados a un fichero CSV para su integración en herramientas de CRM o \textit{marketing}.
+\end{itemize}
+
+\subsubsection{Variables del modelo}
+
+El modelo utiliza variables tanto numéricas como categóricas relacionadas con el comportamiento de compra del cliente.
+
+\paragraph{Variables numéricas (transformadas con $\log(1+x)$ las indicadas):}
+\begin{itemize}
+    \item \texttt{total\_compras\_log}, \texttt{total\_productos\_diferentes\_log}, \texttt{total\_facturas\_log}: volumen y diversidad de la actividad.
+    \item \texttt{valor\_total\_compras\_log}, \texttt{valor\_medio\_por\_compra\_log}, \texttt{precio\_unitario\_medio\_log}: comportamiento monetario.
+    \item \texttt{cantidad\_total\_productos\_log}, \texttt{cantidad\_media\_por\_compra\_log}: volumen físico de productos.
+    \item \texttt{dias\_como\_cliente\_log}, \texttt{recencia\_dias\_log}: antigüedad y recencia.
+    \item \texttt{paises\_diferentes}, \texttt{categorias\_productos\_diferentes}, \texttt{diversidad\_categorias}: diversidad geográfica y de productos.
+    \item \texttt{compras\_fines\_semana\_log}, \texttt{porcentaje\_compras\_fines\_semana}: patrón temporal semanal.
+    \item \texttt{mes\_mas\_activo}, \texttt{meses\_diferentes\_compra}, \texttt{meses\_activo\_log}: patrones estacionales.
+    \item \texttt{tiempo\_medio\_entre\_compras\_log}, \texttt{frecuencia\_compra\_log}: cadencia de compra.
+    \item \texttt{valor\_mensual\_medio\_log}, \texttt{compras\_mensuales\_medias\_log}: actividad mensual.
+\end{itemize}
+
+\paragraph{Variables categóricas (codificadas con \textit{One-Hot Encoding}):}
+\begin{itemize}
+    \item \texttt{pais\_principal}: país principal del cliente.
+    \item \texttt{categoria\_favorita}: categoría de producto más comprada.
+    \item \texttt{dia\_semana\_favorito}: día habitual de compra.
+    \item \texttt{hora\_favorita}: franja horaria más frecuente de compra.
+\end{itemize}
+
+\subsection{Configuración del entrenamiento}
+
+Se utiliza la implementación \texttt{KMeans} de \textit{scikit-learn} con \texttt{n\_init=30} durante la búsqueda y \texttt{n\_init=50} en el modelo final, lo que reduce la probabilidad de converger a mínimos locales subóptimos. La estrategia de selección del $k$ óptimo consiste en entrenar el modelo para $k \in \{2, 3, 4, 5, 6, 7, 8, 9\}$ y evaluar cada configuración mediante el \textbf{índice de silueta} como métrica principal, complementado con análisis visual del \textbf{índice de Calinski-Harabasz} y el \textbf{índice de Davies-Bouldin}.
+
+\begin{lstlisting}
+resultados = []
+for k in range(2, 10):
+    modelo = KMeans(n_clusters=k, random_state=42, n_init=30)
+    etiquetas = modelo.fit_predict(X_modelo)
+    sil = silhouette_score(X_modelo, etiquetas)
+    resultados.append((k, sil))
+
+mejor_k = sorted(resultados, key=lambda x: x[1], reverse=True)[0][0]
+\end{lstlisting}
+
+\subsection{Búsqueda del número óptimo de clusters}
+
+La Figura~\ref{fig:kmeans_metricas} muestra la evolución de las tres métricas en función de $k$. La silueta presenta un máximo claro en $k=2$ (0,5257) con una caída pronunciada a 0,2627 en $k=3$. Los índices complementarios refuerzan esta elección: Calinski-Harabasz alcanza su máximo en $k=2$ y desciende monótonamente a partir de ahí, mientras que Davies-Bouldin presenta su mínimo en $k=2$ y empeora con valores mayores. Los tres indicadores convergen en señalar $k=2$ como configuración óptima.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/kmeans/metricas_k_v2.jpeg}
+\caption{Evolución de las tres métricas internas en función del número de \textit{clusters} $k$: silueta (mayor mejor), Calinski-Harabasz (mayor mejor) y Davies-Bouldin (menor mejor).}
+\label{fig:kmeans_metricas}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Índice de silueta para distintos valores de $k$}
+\label{tab:kmeans_busqueda_k}
+\begin{tabular}{rr}
+\toprule
+\textbf{$k$} & \textbf{Silueta} \\
+\midrule
+2 & \textbf{0,5257} \\
+3 & 0,2627 \\
+4 & 0,2587 \\
+5 & 0,2446 \\
+6 & 0,2151 \\
+7 & 0,2003 \\
+8 & 0,1989 \\
+9 & 0,1909 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Modelo final}
+
+La configuración seleccionada es \texttt{KMeans(n\_clusters=2, n\_init=50, random\_state=42)} entrenada sobre el dataset preprocesado de 4.208 clientes en el espacio PCA de 10 dimensiones. Los tamaños de los dos \textit{clusters} resultantes son 3.673 y 535 clientes (Figura~\ref{fig:kmeans_tamano}). El Cuadro~\ref{tab:kmeans_resumen} resume las métricas finales.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras/kmeans/tamano_clusters_v2.jpeg}
+\caption{Distribución del número de clientes por \textit{cluster}.}
+\label{fig:kmeans_tamano}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Resumen del modelo K-Means final}
+\label{tab:kmeans_resumen}
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica / parámetro} & \textbf{Valor} \\
+\midrule
+Algoritmo & \texttt{KMeans} \\
+$k$ (número de \textit{clusters}) & 2 \\
+\texttt{n\_init} & 50 \\
+\texttt{random\_state} & 42 \\
+Componentes PCA & 10 (91,8\,\% varianza) \\
+Clientes utilizados & 4.208 \\
+Silueta & 0,5257 \\
+Tamaño \textit{cluster} 0 & 3.673 (87,3\,\%) \\
+Tamaño \textit{cluster} 1 & 535 (12,7\,\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+La Figura~\ref{fig:kmeans_pca} muestra los \textit{clusters} proyectados en el espacio PCA 2D. Se aprecia una separación nítida entre el \textit{cluster} 0 (mayoritario, en azul, concentrado en la zona izquierda del eje PC1) y el \textit{cluster} 1 (minoritario, en naranja, distribuido hacia valores altos de PC1). La separación es coherente con el valor de silueta obtenido (0,5257).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/kmeans/pca_2d_v2.jpeg}
+\caption{Clientes proyectados sobre las dos primeras componentes principales, coloreados por \textit{cluster}.}
+\label{fig:kmeans_pca}
+\end{figure}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Silueta sólida}: 0,5257, dentro del rango ``buena estructura'' (>0,5), con una caída pronunciada y limpia entre $k=2$ y $k=3$ (de 0,5257 a 0,2627) que confirma la elección.
+    \item \textbf{Convergencia entre criterios}: las tres métricas internas (silueta, Calinski-Harabasz y Davies-Bouldin) señalan de forma unánime $k=2$ como configuración óptima.
+    \item \textbf{Preprocesado robusto}: la combinación de PCA (10 componentes, 91,8\,\% de varianza) y \textit{LOF} sobre el espacio reducido produce una representación compacta del comportamiento de compra y elimina anomalías locales antes del \textit{clustering}.
+    \item \textbf{Interpretabilidad de negocio}: la naturaleza basada en centroides permite caracterizar cada \textit{cluster} con un punto representativo, facilitando que los resultados sean comprendidos tanto por perfiles técnicos como por responsables de \textit{marketing}.
+    \item \textbf{Aplicabilidad directa en CRM}: la asignación de cada cliente a un segmento concreto se exporta a CSV y es directamente integrable con plataformas de automatización comercial.
+    \item \textbf{Rapidez y estabilidad}: el algoritmo es eficiente incluso en datasets grandes y el uso de \texttt{n\_init=50} reduce la dependencia de la inicialización aleatoria.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Necesidad de fijar $k$ a priori}: aunque la búsqueda automática mitiga este problema, obliga a realizar procesos de validación adicionales para seleccionar el valor óptimo.
+    \item \textbf{Asunción de clusters esféricos}: K-Means funciona mejor con grupos de forma aproximadamente convexa y tamaños similares; en este caso los tamaños son desbalanceados (87,3\,\% / 12,7\,\%).
+    \item \textbf{Pérdida de interpretabilidad directa por PCA}: la reducción de dimensionalidad mejora la estabilidad del modelo, pero hace que el \textit{clustering} se realice sobre componentes transformados y no sobre las variables originales, lo que dificulta atribuir un \textit{cluster} a una variable concreta sin un análisis adicional.
+    \item \textbf{Sensibilidad a valores extremos}: aunque la transformación logarítmica y la eliminación de \textit{outliers} mediante LOF mitigan este problema, el algoritmo sigue siendo sensible a valores atípicos residuales.
+    \item \textbf{Dependencia del escalado}: cualquier diferencia de escala entre variables se traduce directamente en mayor peso en el cálculo de distancias.
+    \item \textbf{Sin detección de anomalías propia}: a diferencia de los modelos basados en densidad, K-Means asigna obligatoriamente cada cliente a un \textit{cluster}, por lo que la identificación de \textit{outliers} debe hacerse en una etapa previa.
+    \item \textbf{Pequeñas variaciones en los datos pueden modificar centroides}: como ocurre en cualquier algoritmo de \textit{clustering}, los resultados deben interpretarse como una aproximación útil para segmentación comercial y no como categorías absolutas e inmutables.
+\end{itemize}
+
+\section{Modelo Clustering Jerárquico}
+\label{sec:jerarquico}
+
+\subsection{Preprocesado específico para clustering jerárquico}
+
+Sobre el dataset común generado en la Parte I (4.339 clientes, 30 variables) se aplica un preprocesado específico para adaptarlo al algoritmo jerárquico, que se basa en distancias entre puntos. Los pasos son: detección y eliminación de \textit{outliers}, codificación de variables categóricas, escalado y reducción de dimensionalidad mediante PCA.
+
+\subsubsection{Detección y eliminación de outliers}
+
+Una inspección preliminar revela la presencia de clientes ``ballena'': un cliente con \texttt{valor\_total\_compras} superior a 77.000 GBP (frente a una mediana en torno a los 660 GBP) y otros con cantidades de producto desproporcionadas respecto al resto. Estos casos extremos distorsionan el espacio de características y se aplica una estrategia en dos pasos:
+
+\begin{itemize}
+    \item \textbf{Paso 1 — Recorte por percentil 99} en variables monetarias y de cantidad (\texttt{valor\_total\_compras}, \texttt{cantidad\_total\_productos}, \texttt{total\_compras}, \texttt{valor\_medio\_por\_compra}, \texttt{valor\_mensual\_medio}, \texttt{compras\_mensuales\_medias} y \texttt{cantidad\_media\_por\_compra}). Elimina 161 clientes (3,71\,\%).
+    \item \textbf{Paso 2 — Isolation Forest} sobre el dataset ya recortado, configurado con \texttt{contamination=0.05} y \texttt{n\_estimators=200}. Detecta 209 \textit{outliers} multivariantes adicionales (5\,\%).
+\end{itemize}
+
+\begin{lstlisting}
+from sklearn.ensemble import IsolationForest
+
+iso_forest = IsolationForest(contamination=0.05, random_state=42, n_estimators=200)
+outlier_labels = iso_forest.fit_predict(df[num_cols_outliers])
+df = df[outlier_labels == 1].reset_index(drop=True)
+\end{lstlisting}
+
+\noindent$\rightarrow$ El dataset final tras los dos pasos contiene \textbf{3.969 clientes}, una pérdida total del 8,53\,\% respecto al original.
+
+\subsubsection{Codificación, escalado y reducción de dimensionalidad}
+
+El dataset contiene dos variables categóricas: \texttt{pais\_principal} (36 valores únicos) y \texttt{categoria\_favorita} (6). Para evitar generar columnas con muy poca señal, se agrupan en una categoría \texttt{Other} todas las categorías con frecuencia inferior al 1\,\%. Tras la agrupación, ambas variables quedan reducidas a 4 categorías cada una y se aplica codificación \textit{One-Hot}, resultando en 33 columnas.
+
+A continuación se aplica \texttt{RobustScaler}, que centra cada variable en su mediana y la escala por el rango intercuartílico (IQR). Frente a \texttt{StandardScaler}, es menos sensible a \textit{outliers} residuales que pudieran haber sobrevivido a la depuración anterior.
+
+Finalmente, el análisis de la matriz de correlaciones detecta \textbf{19 pares con $|r| > 0,7$}, evidenciando una redundancia importante en variables derivadas del mismo conjunto de transacciones. Se aplica PCA seleccionando el número mínimo de componentes que explican al menos el 80\,\% de la varianza, con un mínimo de 3. Con \textbf{3 componentes principales} se cubre el \textbf{84,14\,\% de la varianza}, y el dataset resultante $X_{\text{PCA}} \in \mathbb{R}^{3969 \times 3}$ constituye la entrada del modelo.
+
+\begin{table}[h]
+\centering
+\caption{Reducción de filas en el preprocesado del clustering jerárquico}
+\label{tab:reduccion}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Etapa} & \textbf{Eliminadas} & \textbf{Restantes} & \textbf{\% conservado} \\
+\midrule
+Dataset común (Parte I) & --- & 4.339 & 100,00\,\% \\
+Paso 1 — Recorte percentil 99 & 161 & 4.178 & 96,29\,\% \\
+Paso 2 — \textit{Isolation Forest} (5\,\%) & 209 & 3.969 & 91,47\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Descripción del modelo}
+
+El \textit{clustering} jerárquico aglomerativo es un algoritmo de aprendizaje no supervisado que construye una jerarquía de agrupaciones de forma ascendente: parte de cada punto como su propio \textit{cluster} y, en cada iteración, fusiona los dos más cercanos según un criterio de enlace (\textit{linkage}). El proceso continúa hasta que todos los puntos quedan en un único \textit{cluster}, generando un árbol de fusiones llamado \textbf{dendrograma}.
+
+A diferencia de \textit{K-Means}, no requiere fijar el número de \textit{clusters} de antemano: la decisión sobre cuántos grupos extraer se toma a posteriori, ``cortando'' el dendrograma a la altura adecuada. Esto convierte al dendrograma en una herramienta de diagnóstico única de este algoritmo: los saltos grandes en la altura de fusión indican configuraciones donde los \textit{clusters} están bien separados.
+
+El criterio de enlace determina cómo se mide la distancia entre dos \textit{clusters}. Las opciones principales son \textit{ward} (minimiza la varianza intra-\textit{cluster}, tiende a generar \textit{clusters} compactos y de tamaño similar), \textit{complete} (distancia máxima entre puntos), \textit{average} (distancia media) y \textit{single} (distancia mínima, suele formar cadenas alargadas y es muy sensible a \textit{outliers}).
+
+\subsection{Configuración del entrenamiento}
+
+Se utiliza la implementación \texttt{AgglomerativeClustering} de \textit{scikit-learn}, complementada con la función \texttt{linkage} de \textit{SciPy} para calcular y visualizar el dendrograma. La distancia es euclídea y, salvo en la comparación de criterios, el enlace es \textit{ward}.
+
+\begin{lstlisting}
+from sklearn.cluster import AgglomerativeClustering
+from scipy.cluster.hierarchy import linkage, dendrogram
+
+Z = linkage(X_pca, method='ward')
+modelo = AgglomerativeClustering(n_clusters=K, linkage='ward')
+labels = modelo.fit_predict(X_pca)
+\end{lstlisting}
+
+La estrategia de evaluación tiene tres fases: (1) inspección del dendrograma para identificar visualmente posibles puntos de corte; (2) búsqueda sistemática del número óptimo de \textit{clusters} probando $K \in \{2, 3, \ldots, 10\}$ y comparando silueta, Davies-Bouldin e inercia intra-\textit{cluster}; (3) fijado el $K$ óptimo, comparación de los cuatro criterios de enlace.
+
+\subsection{Análisis del dendrograma}
+
+El dendrograma sobre los 3.969 clientes en el espacio PCA, calculado con enlace \textit{ward}, se muestra en la Figura~\ref{fig:dendrograma}. Por legibilidad se ha truncado a las últimas 30 fusiones (modo \texttt{truncate\_mode='lastp'}); el árbol completo es ilegible con este tamaño de muestra.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/dendrograma.png}
+\caption{Dendrograma del \textit{clustering} jerárquico (enlace \textit{ward}, últimas 30 fusiones). Las líneas discontinuas marcan los cortes correspondientes a $K=3$ (verde), $K=4$ (rojo) y $K=5$ (morado).}
+\label{fig:dendrograma}
+\end{figure}
+
+El salto más pronunciado en la altura de fusión se produce entre las dos últimas uniones, lo que sugiere visualmente que la separación más nítida de la estructura del dataset corresponde a $K=2$. Para valores de $K$ mayores los saltos son progresivamente menores, indicando que las fusiones siguientes ya no separan grupos cualitativamente distintos.
+
+\subsection{Búsqueda del número óptimo de clusters}
+
+Se entrena el modelo con \textit{ward} para todos los valores $K \in \{2, \ldots, 10\}$ y se calculan las métricas para cada uno. Los resultados se recogen en el Cuadro~\ref{tab:k_optimo} y se representan en la Figura~\ref{fig:metricas_k}.\begin{table}[h]
+\centering
+\caption{Métricas de evaluación del \textit{clustering} jerárquico (enlace \textit{ward}) para distintos valores de $K$}
+\label{tab:k_optimo}
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{$K$} & \textbf{Silueta} & \textbf{Davies-Bouldin} & \textbf{Inercia} & \textbf{Tam. mín.} & \textbf{Tam. máx.} \\
+\midrule
+2  & \textbf{0,7403} & 0,7186 & 201.949 & 455 & 3.514 \\
+3  & 0,7184 & \textbf{0,6517} & 136.578 & 76 & 3.514 \\
+4  & 0,5749 & 0,9455 & 105.398 & 76 & 2.969 \\
+5  & 0,5919 & 0,7779 & 78.884 & 76 & 2.969 \\
+6  & 0,5972 & 0,7685 & 59.884 & 76 & 2.659 \\
+7  & 0,5931 & 0,7895 & 54.321 & 34 & 2.659 \\
+8  & 0,5796 & \textbf{0,7151} & 49.154 & 21 & 2.659 \\
+9  & 0,5803 & 0,8401 & 44.028 & 21 & 2.659 \\
+10 & 0,5806 & 0,8879 & 39.274 & 21 & 2.659 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/metricas_k.png}
+\caption{Evolución de las métricas de calidad del \textit{clustering} en función de $K$: silueta (izquierda, mayor mejor), Davies-Bouldin (centro, menor mejor) e inercia intra-\textit{cluster} (derecha, método del codo).}
+\label{fig:metricas_k}
+\end{figure}
+
+La silueta máxima se alcanza en $K=2$ (0,7403), con una diferencia notable respecto a los siguientes valores. El Davies-Bouldin muestra su mínimo en $K=3$ (0,6517), pero a costa de fragmentar uno de los grupos en dos subgrupos muy desbalanceados (76 y 3.514 clientes). Se selecciona $K=2$ como configuración final por la mayor separación en silueta y por presentar tamaños más equilibrados (455 y 3.514).
+
+\subsection{Comparación de criterios de enlace}
+
+Para confirmar la elección de \textit{ward}, se comparan los cuatro criterios de enlace con $K=2$ fijo. Los resultados aparecen en el Cuadro~\ref{tab:linkages}.
+
+\begin{table}[h]
+\centering
+\caption{Comparación de criterios de enlace ($K=2$)}
+\label{tab:linkages}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Linkage} & \textbf{Silueta} & \textbf{Davies-Bouldin} & \textbf{Tamaños} \\
+\midrule
+\textit{ward}     & 0,7403 & 0,7186 & 455 / 3.514 \\
+\textit{complete} & 0,8190 & 0,2738 & 36 / 3.933 \\
+\textit{average}  & 0,8726 & 0,1197 & 2 / 3.967 \\
+\textit{single}   & 0,8726 & 0,1197 & 2 / 3.967 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A primera vista, \textit{average} y \textit{single} ofrecen la mejor silueta (0,87) y el mejor Davies-Bouldin (0,12). Sin embargo, ambos producen un \textit{cluster} con 2 clientes y otro con 3.967, lo que indica que están identificando \textit{outliers} residuales, no segmentos de mercado. \textit{Complete} (36 / 3.933) también es desbalanceado. Solo \textbf{\textit{ward}} produce \textit{clusters} con tamaños operativamente útiles (455 y 3.514), por lo que se confirma como criterio final.
+
+\subsection{Modelo final y métricas}
+
+La configuración seleccionada es \texttt{AgglomerativeClustering(n\_clusters=2, linkage='ward')} entrenada sobre los 3.969 clientes en el espacio PCA de 3 dimensiones. Las métricas finales se recogen en el Cuadro~\ref{tab:resumen_final}.
+
+\begin{table}[h]
+\centering
+\caption{Resumen del modelo final}
+\label{tab:resumen_final}
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica / parámetro} & \textbf{Valor} \\
+\midrule
+Algoritmo & \texttt{AgglomerativeClustering} \\
+Linkage & \textit{ward} \\
+$K$ (número de \textit{clusters}) & 2 \\
+Clientes utilizados & 3.969 \\
+Componentes PCA & 3 (84,14\,\% varianza) \\
+Silueta & 0,7403 \\
+Davies-Bouldin & 0,7186 \\
+Tamaño \textit{cluster} 0 & 455 (11,5\,\%) \\
+Tamaño \textit{cluster} 1 & 3.514 (88,5\,\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+Se generan cuatro visualizaciones para diagnosticar la calidad de la segmentación: proyección en PCA 2D y 3D, análisis de silueta por \textit{cluster} y heatmap del perfil medio.
+
+\subsubsection{Visualización 2D y 3D en espacio PCA}
+
+Las proyecciones 2D y 3D (Figuras~\ref{fig:pca2d} y~\ref{fig:pca3d}) permiten comprobar visualmente si los grupos están separados en el espacio de mayor varianza. Se observa una nube principal compacta (\textit{cluster} 1) y una distribución más dispersa que se extiende hacia la derecha y abajo (\textit{cluster} 0).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/pca_2d.png}
+\caption{Clientes proyectados sobre las dos primeras componentes principales, coloreados por \textit{cluster}.}
+\label{fig:pca2d}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/pca_3d.png}
+\caption{Clientes proyectados en las tres componentes principales del análisis PCA.}
+\label{fig:pca3d}
+\end{figure}
+
+\subsubsection{Análisis silhouette}
+
+El gráfico de silueta (Figura~\ref{fig:silueta}) muestra el coeficiente individual de cada cliente. La línea discontinua roja indica la media general (0,740). Una buena segmentación se caracteriza por barras anchas y altas, sin valores negativos.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/silueta_por_cluster.png}
+\caption{Coeficiente de silueta individual de cada cliente, agrupado por \textit{cluster}.}
+\label{fig:silueta}
+\end{figure}
+
+\subsubsection{Heatmap de perfiles por cluster}
+
+El \textit{heatmap} (Figura~\ref{fig:heatmap}) visualiza las características promedio de cada \textit{cluster} normalizadas como $z$-scores. Los colores rojos indican valores altos respecto a la media global, los azules valores bajos. Las anotaciones contienen los valores medios reales.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/heatmap_perfil.png}
+\caption{Perfil de \textit{clusters}: el color codifica el $z$-score por columna; las anotaciones contienen los valores medios reales.}
+\label{fig:heatmap}
+\end{figure}
+
+\subsection{Perfiles de clientes por cluster}
+
+Los valores medios de las variables clave por \textit{cluster} se presentan en el Cuadro~\ref{tab:perfil}. La variable que diferencia ambos grupos de forma abrumadora es \texttt{porcentaje\_compras\_fines\_semana}: 78,64\,\% en el \textit{cluster} 0 frente a 4,39\,\% en el \textit{cluster} 1. El resto de variables muestran diferencias mucho menores; el valor monetario total y mensual es prácticamente idéntico entre ambos grupos.
+
+\begin{table}[h]
+\centering
+\caption{Perfil medio por \textit{cluster}}
+\label{tab:perfil}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Variable} & \textbf{\textit{Cluster} 0 (n=455)} & \textbf{\textit{Cluster} 1 (n=3.514)} \\
+\midrule
+\texttt{total\_compras} & 104,98 & 60,20 \\
+\texttt{valor\_total\_compras} (GBP) & 1.052,20 & 1.076,04 \\
+\texttt{valor\_medio\_por\_compra} (GBP) & 12,88 & 22,99 \\
+\texttt{cantidad\_total\_productos} & 610,83 & 636,04 \\
+\texttt{dias\_como\_cliente} & 125,83 & 121,75 \\
+\texttt{frecuencia\_compra} & 12,17 & 8,27 \\
+\texttt{valor\_mensual\_medio} (GBP) & 350,28 & 378,07 \\
+\texttt{porcentaje\_compras\_fines\_semana} & \textbf{78,64\,\%} & \textbf{4,39\,\%} \\
+\texttt{total\_productos\_diferentes} & 79,97 & 47,63 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Cluster 0 — Compradores de fin de semana (455 clientes).}
+\begin{itemize}
+    \item Compras en fin de semana: 78,6\,\% (muy alto)
+    \item Total compras: 105,0 (alto)
+    \item Frecuencia compra: 12,17 (alta)
+    \item Productos diferentes: 80,0 (variedad amplia)
+    \item \textbf{Perfil}: clientes con compras concentradas en sábado/domingo, ticket medio bajo y cesta diversificada. Compatible con clientes B2C minoristas que compran de forma recreativa fuera del horario laboral.
+\end{itemize}
+
+\paragraph{Cluster 1 — Compradores entre semana (3.514 clientes).}
+\begin{itemize}
+    \item Compras en fin de semana: 4,4\,\% (muy bajo)
+    \item Valor medio por compra: 22,99 GBP (alto)
+    \item Valor mensual medio: 378,07 GBP (alto)
+    \item Total compras: 60,2 (medio-bajo, compensado por ticket alto)
+    \item \textbf{Perfil}: la mayoría del dataset. Compran de lunes a viernes, con menor frecuencia pero mayor ticket medio. Compatible con clientes B2B mayoristas o profesionales que realizan pedidos en horario laboral.
+\end{itemize}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Métricas internas robustas}: silueta de 0,7403, dentro del rango considerado ``estructura fuerte'' en la literatura ($> 0,7$); Davies-Bouldin de 0,7186, indicando buena separación.
+    \item \textbf{Clusters de tamaño operativamente útil}: 88,5\,\% / 11,5\,\%, lejos del riesgo de tener un grupo dominante con el 99\,\% de los datos.
+    \item \textbf{Diagnóstico visual único}: el dendrograma confirma que $K=2$ corresponde al corte natural del dataset, una herramienta de la que \textit{K-Means} no dispone.
+    \item \textbf{Determinismo}: el algoritmo es reproducible al 100\,\%, sin depender de inicialización aleatoria.
+    \item \textbf{Interpretabilidad de negocio}: los grupos se asocian a perfiles claros (B2C de fin de semana vs B2B entre semana) que permiten acciones comerciales diferenciadas.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Separación unidimensional}: la práctica totalidad de la diferencia entre los dos grupos se concentra en una única variable (\texttt{porcentaje\_compras\_fines\_semana}). Las demás dimensiones del comportamiento de compra son muy similares entre ambos.
+    \item \textbf{Estructura limitada del dataset}: para $K > 2$ las métricas se degradan significativamente y los \textit{clusters} se desbalancean, lo que sugiere que el dataset no contiene de forma natural más de dos segmentos bien diferenciados.
+    \item \textbf{Desbalance entre grupos}: 88,5\,\% / 11,5\,\% limita el valor de las acciones específicas que se podrían dirigir al \textit{cluster} minoritario.
+    \item \textbf{Coste computacional}: el algoritmo es $O(n^2)$ en memoria. En este dataset (3.969 clientes) no afecta, pero sería un problema en bases de cientos de miles de clientes.
+    \item \textbf{Juicio cualitativo en la elección final}: la decisión de $K$ y de \textit{linkage} incorpora consideraciones de equilibrio de tamaños, no es puramente automática a partir de las métricas.
+\end{itemize}
+
+\subsection{Visualizaciones complementarias del preprocesado (opcional)}
+
+\begin{tcolorbox}[colback=gray!5,colframe=gray!40,boxrule=0.5pt]
+\textit{Esta sección recoge dos gráficas generadas durante el preprocesado del notebook que enriquecen visualmente el análisis pero no son imprescindibles para entender el proceso. Se incluyen como apoyo opcional y pueden eliminarse sin afectar a la coherencia del documento.}
+\end{tcolorbox}
+
+\subsubsection{Matriz de correlación entre variables}
+
+La Figura~\ref{fig:matriz_corr} muestra la matriz de correlación completa entre las 33 variables del dataset escalado. Permite visualizar de un vistazo los bloques de variables redundantes: el cuadrante superior izquierdo concentra las correlaciones más fuertes (variables de volumen y monetarias), mientras que las variables categóricas codificadas (parte inferior derecha) presentan correlaciones débiles con el resto.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/matriz_correlacion.png}
+\caption{Matriz de correlación entre las 33 variables del dataset escalado. Los tonos rojos indican correlación positiva fuerte, los azules correlación negativa.}
+\label{fig:matriz_corr}
+\end{figure}
+
+\subsubsection{Varianza explicada por PCA}
+
+La Figura~\ref{fig:varianza_pca} muestra la varianza explicada por cada componente individual y la curva acumulada. La primera componente recoge por sí sola un 65,9\,\% de la varianza, la segunda un 11,1\,\% adicional y la tercera un 7,2\,\%. A partir de la cuarta componente la contribución cae por debajo del 4\,\%, lo que sugiere que las tres primeras concentran la práctica totalidad de la información estructural del dataset.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/varianza_pca.png}
+\caption{Análisis de varianza explicada por PCA. A la izquierda, varianza explicada por cada componente individual; a la derecha, curva acumulada con líneas de referencia en el 60\,\% y el 80\,\%.}
+\label{fig:varianza_pca}
+\end{figure}
+
+% =============================================================================
+\section{Modelo DBSCAN}
+\label{sec:dbscan}
+
+\subsection{Preprocesado específico para DBSCAN}
+
+Sobre el dataset común generado en la Parte I se aplica un preprocesado específico que prioriza la robustez frente a valores extremos, ya que DBSCAN es sensible a la escala y a la dimensionalidad de los datos.
+
+\subsubsection{Selección de variables}
+
+Se utilizan las 9 variables más representativas del comportamiento de compra:
+
+\begin{itemize}
+    \item \texttt{total\_compras}, \texttt{valor\_total\_compras}, \texttt{valor\_medio\_por\_compra}
+    \item \texttt{frecuencia\_compra}, \texttt{dias\_como\_cliente}, \texttt{cantidad\_total\_productos}
+    \item \texttt{porcentaje\_compras\_fines\_semana}, \texttt{meses\_activo}, \texttt{valor\_mensual\_medio}
+\end{itemize}
+
+\subsubsection{Escalado robusto y eliminación de outliers}
+
+Se aplica \texttt{RobustScaler} para escalar las variables. A continuación se utiliza \texttt{EllipticEnvelope} con \texttt{contamination=0.10} para eliminar el 10\,\% de clientes más atípicos en términos multivariantes, dejando el dataset depurado con 3.905 clientes.
+
+\subsubsection{Reducción de dimensionalidad}
+
+Se aplica PCA con 3 componentes, que explican el \textbf{87,5\,\% de la varianza total} (PC1: 58,4\,\%; PC2: 18,1\,\%; PC3: 10,9\,\%). Esto permite visualización 3D sin pérdida significativa de información.
+
+\subsection{Descripción del modelo}
+
+DBSCAN (\textit{Density-Based Spatial Clustering of Applications with Noise}) es un algoritmo de \textit{clustering} basado en densidad, especialmente eficaz para identificar \textit{clusters} de formas arbitrarias y detectar puntos atípicos en grandes volúmenes de datos. A diferencia de K-Means, no requiere especificar el número de \textit{clusters} a priori. En su lugar, utiliza dos parámetros clave:
+
+\begin{itemize}
+    \item \textbf{eps ($\varepsilon$)}: el radio máximo de vecindad que define la distancia de búsqueda entre puntos.
+    \item \textbf{min\_samples}: el número mínimo de puntos requeridos dentro del radio $\varepsilon$ para que un punto se considere central (\textit{core point}).
+\end{itemize}
+
+El objetivo es identificar grupos de clientes similares basándose en sus patrones de comportamiento de compra, permitiendo la detección simultánea de clientes atípicos.
+
+\subsection{Configuración del entrenamiento}
+
+Se realiza una búsqueda exhaustiva de parámetros óptimos. El rango de \texttt{eps} se calcula dinámicamente a partir del percentil de las distancias al $k$-vecino más cercano, obteniéndose un intervalo de \textbf{0,0312 a 0,2052}. Se exploran 100 combinaciones (\texttt{eps}=20 valores, \texttt{min\_samples}=5 valores) y se evalúan con métricas múltiples (silueta, Davies-Bouldin, Calinski-Harabasz) combinadas con restricciones de equilibrio entre \textit{clusters}.
+
+\begin{lstlisting}
+def calcular_rango_eps(X, min_samples_ref=5):
+    nbrs = NearestNeighbors(n_neighbors=min_samples_ref).fit(X)
+    distancias, _ = nbrs.kneighbors(X)
+    distancias_k = distancias[:, min_samples_ref - 1]
+    eps_min = float(np.percentile(distancias_k, 10))
+    eps_max = float(np.percentile(distancias_k, 70))
+    return eps_min, eps_max, distancias_k
+\end{lstlisting}
+
+\subsection{Modelo final y métricas}
+
+Tras la búsqueda, la configuración óptima seleccionada es \texttt{eps=0.1411} y \texttt{min\_samples=15}. El Cuadro~\ref{tab:dbscan_resumen} resume el modelo final.
+
+\begin{table}[h]
+\centering
+\caption{Resumen del modelo DBSCAN final}
+\label{tab:dbscan_resumen}
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica / parámetro} & \textbf{Valor} \\
+\midrule
+\texttt{eps} & 0,1411 \\
+\texttt{min\_samples} & 15 \\
+\textit{Clusters} encontrados & 4 \\
+Puntos de ruido & 1.927 (49,3\,\%) \\
+Puntos asignados a \textit{cluster} & 1.978 (50,7\,\%) \\
+Silueta & 0,3386 \\
+Davies-Bouldin & 0,5999 \\
+Calinski-Harabasz & 1.012,36 \\
+Componentes PCA & 3 (87,5\,\% varianza) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+\subsubsection{Gráfico K-distancias}
+
+El gráfico de $k$-distancias (Figura~\ref{fig:dbscan_kdist}) muestra las distancias ordenadas de cada punto al $k$-ésimo vecino más cercano. La línea punteada roja indica el valor óptimo de \texttt{eps} (0,1411) detectado automáticamente, donde el gráfico presenta una inflexión clara que separa puntos densamente empaquetados de aquellos más aislados.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/dbscan/k_distancias.png}
+\caption{Gráfico $k$-distancias con \texttt{eps} óptimo detectado automáticamente.}
+\label{fig:dbscan_kdist}
+\end{figure}
+
+\subsubsection{Visualización 2D y 3D en espacio PCA}
+
+La proyección 2D (Figura~\ref{fig:dbscan_pca2d}) revela la distribución de clientes en los dos componentes principales que explican el 76,5\,\% de la varianza. Se observan claramente 4 \textit{clusters} con patrones distintos, así como puntos aislados clasificados como ruido. La visualización 3D (Figura~\ref{fig:dbscan_pca3d}) incorpora la tercera componente y proporciona una perspectiva más completa de la separación.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/dbscan/pca_2d.png}
+\caption{Clientes proyectados sobre las dos primeras componentes principales.}
+\label{fig:dbscan_pca2d}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/dbscan/pca_3d.png}
+\caption{Clientes proyectados en las tres componentes principales del análisis PCA.}
+\label{fig:dbscan_pca3d}
+\end{figure}
+
+\subsubsection{Distribución de tamaños de clusters}
+
+La Figura~\ref{fig:dbscan_distribucion} muestra que los \textit{clusters} tienen tamaños desiguales: \textit{Cluster} 0 (868 clientes), \textit{Cluster} 1 (1.092 clientes), \textit{Cluster} 2 (16 clientes) y \textit{Cluster} 3 (2 clientes). Esta distribución es característica de DBSCAN, que identifica \textit{clusters} de densidad variable.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras/dbscan/distribucion_clusters.png}
+\caption{Distribución de tamaños de los \textit{clusters} obtenidos.}
+\label{fig:dbscan_distribucion}
+\end{figure}
+
+\subsubsection{Análisis Silhouette}
+
+El análisis de silueta por \textit{cluster} (Figura~\ref{fig:dbscan_silhouette}) muestra la solidez de la asignación. La línea punteada roja (0,339) indica la media general.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/dbscan/silhouette.png}
+\caption{Análisis de silueta por \textit{cluster}.}
+\label{fig:dbscan_silhouette}
+\end{figure}
+
+\subsubsection{Heatmap de perfiles por cluster}
+
+El \textit{heatmap} (Figura~\ref{fig:dbscan_heatmap}) visualiza las características promedio de cada \textit{cluster} normalizadas como $z$-scores. Los colores verdes indican valores altos y los rojos valores bajos.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/dbscan/heatmap_perfiles.png}
+\caption{\textit{Heatmap} de perfiles por \textit{cluster}: colores codifican el $z$-score; números indican la media real.}
+\label{fig:dbscan_heatmap}
+\end{figure}
+
+\subsection{Perfiles de clientes por cluster}
+
+\paragraph{Cluster 0 — Clientes Ocasionales (868 clientes).}
+\begin{itemize}
+    \item Total compras: 13,7 (bajo)
+    \item Valor total: 250,45\,€ (bajo)
+    \item Días como cliente: 1,03 (muy recientes)
+    \item \textbf{Perfil}: clientes nuevos o muy poco activos, posibles \textit{leads} que aún no han realizado compras significativas.
+\end{itemize}
+
+\paragraph{Cluster 1 — Clientes VIP Activos (1.092 clientes).}
+\begin{itemize}
+    \item Total compras: 54,7 (muy alto)
+    \item Valor total: 848,41\,€ (muy alto)
+    \item Días como cliente: 167,8 (clientes establecidos)
+    \item \textbf{Perfil}: clientes leales y de alto valor, son el corazón del negocio con compras frecuentes y gasto total elevado.
+\end{itemize}
+
+\paragraph{Cluster 2 — Clientes Estacionales (16 clientes).}
+\begin{itemize}
+    \item Total compras: 29,7 (medio)
+    \item Valor medio por compra: 6,02\,€ (muy bajo)
+    \item Frecuencia compra: 29,7 (alta)
+    \item \textbf{Perfil}: clientes con compras muy frecuentes pero de bajo valor unitario; probablemente comparten características estacionales o de producto específico.
+\end{itemize}
+
+\paragraph{Cluster 3 — Clientes Premium Excepcionales (2 clientes).}
+\begin{itemize}
+    \item Total compras: 129,81 (extremadamente alto)
+    \item Valor total: 2.329,16\,€ (máximo)
+    \item Días como cliente: 241,96 (antigüedad máxima)
+    \item \textbf{Perfil}: clientes de élite con comportamiento muy superior al resto; merecen estrategias de retención \textit{premium} y atención personalizada.
+\end{itemize}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Detección automática de anomalías}: DBSCAN identifica 1.927 clientes atípicos (49,3\,\%) sin necesidad de un paso adicional, que podrían representar fraude, errores de datos o comportamientos extraordinarios.
+    \item \textbf{Sin necesidad de especificar $k$}: el algoritmo descubre automáticamente el número óptimo de \textit{clusters} (4) basándose en la densidad de los datos.
+    \item \textbf{Clusters de forma arbitraria}: puede identificar agrupaciones con formas no esféricas, especialmente útil para datos de comportamiento de clientes complejos.
+    \item \textbf{Métricas sólidas}: Davies-Bouldin de 0,5999 indica buena separación; Calinski-Harabasz de 1.012,36 confirma alta densidad y separación entre grupos.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Alto porcentaje de ruido (49,3\,\%)}: más de la mitad de los clientes se clasificaron como atípicos. Esto puede indicar que el dataset tiene una distribución muy dispersa o que las características no capturan bien la verdadera estructura de comportamiento.
+    \item \textbf{Clusters desbalanceados}: los \textit{clusters} 2 y 3 son muy pequeños (16 y 2 clientes respectivamente), lo que limita la estabilidad de las conclusiones sobre estos segmentos.
+    \item \textbf{Sensibilidad a parámetros}: DBSCAN es muy sensible a \texttt{eps} y \texttt{min\_samples}; pequeños cambios pueden producir particiones muy distintas.
+    \item \textbf{Silueta moderada (0,3386)}: aunque aceptable, sugiere que algunos clientes están en la frontera entre \textit{clusters} y podrían ser reclasificados con cambios menores en los parámetros.
+\end{itemize}
+
+% =============================================================================
+\section{Modelo HDBSCAN}
+\label{sec:hdbscan}
+
+\subsection{Preprocesado específico para HDBSCAN}
+
+Sobre el dataset común generado en la Parte I se aplica un preprocesado pensado para preservar la información necesaria para detectar agrupaciones de densidad variable. Se seleccionan las 9 variables clave de comportamiento (las mismas que en DBSCAN), se imputan los valores faltantes con la mediana en cada columna y se aplica \texttt{StandardScaler} para escalar las variables al mismo rango. A diferencia de otros modelos, HDBSCAN no requiere una etapa explícita de eliminación de \textit{outliers} previa, ya que el propio algoritmo identifica los puntos atípicos como ruido.
+
+\subsection{Descripción del modelo}
+
+HDBSCAN (\textit{Hierarchical Density-Based Spatial Clustering of Applications with Noise}) es una extensión jerárquica de DBSCAN. A diferencia de DBSCAN, no requiere fijar un valor único de \texttt{eps}: construye una jerarquía de \textit{clusters} a múltiples escalas de densidad y selecciona automáticamente la partición más estable. Esto le permite detectar \textit{clusters} de densidades muy diferentes en un mismo dataset, algo que DBSCAN no consigue con un único parámetro.
+
+Sus parámetros principales son:
+
+\begin{itemize}
+    \item \textbf{min\_cluster\_size}: tamaño mínimo de un \textit{cluster} válido. Influye en la granularidad de la segmentación.
+    \item \textbf{min\_samples}: número mínimo de puntos requeridos para considerar una zona como densa.
+    \item \textbf{cluster\_selection\_method}: estrategia de selección de \textit{clusters} desde el árbol jerárquico (\texttt{eom} en este caso).
+\end{itemize}
+
+\subsection{Configuración del entrenamiento}
+
+Se realiza una búsqueda exhaustiva de hiperparámetros explorando combinaciones de \texttt{min\_cluster\_size} $\in \{10, 15, 20, 25, 30, 40, 50\}$ y \texttt{min\_samples} $\in \{1, 3, 5, 10\}$. Para cada combinación se calculan tres métricas (silueta, Davies-Bouldin, Calinski-Harabasz) más el equilibrio entre tamaños de \textit{clusters}. La selección final se hace mediante una puntuación ponderada que combina las cuatro dimensiones, descartando configuraciones con más de 30\,\% de ruido o tamaños de \textit{clusters} extremadamente desbalanceados.
+
+\begin{lstlisting}
+clusterer = hdbscan.HDBSCAN(
+    min_cluster_size=min_cluster_size,
+    min_samples=min_samples,
+    metric='euclidean',
+    cluster_selection_method='eom'
+)
+etiquetas = clusterer.fit_predict(datos_escalados)
+\end{lstlisting}
+
+\subsection{Modelo final}
+
+La configuración óptima identificada produce \textbf{8 clusters} sobre el dataset, con un porcentaje de ruido del \textbf{26,0\,\%} (1.127 clientes clasificados como atípicos), tal como puede observarse en las visualizaciones generadas (Figura~\ref{fig:hdbscan_distribucion}).
+
+\subsection{Análisis visual de los resultados}
+
+\subsubsection{Análisis de Silhouette}
+
+La Figura~\ref{fig:hdbscan_silhouette} muestra el coeficiente de silueta individual de cada cliente, agrupado por \textit{cluster}. La línea discontinua roja indica el valor medio del análisis. Algunos \textit{clusters} (0, 5, 6) presentan barras anchas y altas, mientras que otros (3, 4) muestran mayor variabilidad e incluso valores negativos en algunos puntos.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/hdbscan/silhouette_analysis.png}
+\caption{Coeficiente de silueta individual de cada cliente, agrupado por \textit{cluster}.}
+\label{fig:hdbscan_silhouette}
+\end{figure}
+
+\subsubsection{Distribución por segmento}
+
+La Figura~\ref{fig:hdbscan_distribucion} muestra la distribución de clientes en cada uno de los 8 \textit{clusters} más el ruido. Los tamaños son notablemente desbalanceados, con un \textit{cluster} mayoritario (1.360 clientes, 31,3\,\%), un grupo grande de ruido (1.127 clientes, 26,0\,\%) y varios \textit{clusters} muy pequeños (de 68 a 255 clientes).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/hdbscan/distribucion_segmentos.png}
+\caption{Distribución de clientes por segmento, incluyendo el ruido.}
+\label{fig:hdbscan_distribucion}
+\end{figure}
+
+\subsubsection{Visualización 2D en espacio PCA}
+
+La Figura~\ref{fig:hdbscan_pca} muestra los \textit{clusters} proyectados sobre las dos primeras componentes principales (PC1: 36,7\,\%; PC2: 22,8\,\%). Los centroides de los \textit{clusters} aparecen marcados con ``X'' rojas y se concentran principalmente en una zona compacta del espacio, mientras los puntos de ruido se distribuyen ampliamente alrededor.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/hdbscan/pca_2d.png}
+\caption{Separación de \textit{clusters} en espacio PCA 2D.}
+\label{fig:hdbscan_pca}
+\end{figure}
+
+\subsubsection{Distribución de distancias intra e inter-cluster}
+
+La Figura~\ref{fig:hdbscan_distancias} muestra la distribución de distancias intra-\textit{cluster} (azul, dentro del mismo grupo) e inter-\textit{cluster} (rojo, entre grupos distintos). El ratio entre ambas distribuciones aparece anotado en la propia figura y permite valorar el grado de separación entre \textit{clusters}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/hdbscan/distancias_intra_inter.png}
+\caption{Distribución de distancias intra-\textit{cluster} (azul) e inter-\textit{cluster} (rojo).}
+\label{fig:hdbscan_distancias}
+\end{figure}
+
+\subsubsection{Matriz de distancias entre centroides}
+
+La Figura~\ref{fig:hdbscan_centroides} muestra la matriz de distancias entre los centroides de los 8 \textit{clusters}. Permite identificar qué \textit{clusters} son más similares entre sí (distancias bajas, color oscuro) y cuáles más diferentes (distancias altas, color claro).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras/hdbscan/matriz_centroides.png}
+\caption{Matriz de distancias entre centroides de los 8 \textit{clusters}.}
+\label{fig:hdbscan_centroides}
+\end{figure}
+
+\subsubsection{Calidad por cluster (Boxplot)}
+
+La Figura~\ref{fig:hdbscan_boxplot} muestra mediante \textit{boxplots} la distribución de coeficientes de silueta dentro de cada \textit{cluster}. Permite identificar qué \textit{clusters} tienen miembros más cohesionados.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras/hdbscan/silhouette_boxplot.png}
+\caption{Distribución de coeficientes de silueta por \textit{cluster} (\textit{boxplot}).}
+\label{fig:hdbscan_boxplot}
+\end{figure}
+
+\subsubsection{Análisis de comportamiento de compra}
+
+Las Figuras~\ref{fig:hdbscan_valor_freq},~\ref{fig:hdbscan_ticket} y~\ref{fig:hdbscan_compras_antig} muestran la distribución de los segmentos en distintas dimensiones de comportamiento: valor total vs frecuencia, ticket promedio por segmento y compras vs antigüedad.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/hdbscan/valor_vs_frecuencia.png}
+\caption{Valor total vs frecuencia de compra, coloreado por segmento.}
+\label{fig:hdbscan_valor_freq}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/hdbscan/ticket_por_segmento.png}
+\caption{\textit{Boxplot} del ticket promedio por segmento.}
+\label{fig:hdbscan_ticket}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras/hdbscan/compras_vs_antiguedad.png}
+\caption{Total de compras vs antigüedad del cliente, coloreado por segmento.}
+\label{fig:hdbscan_compras_antig}
+\end{figure}
+
+\subsection{Perfiles de clientes por cluster}
+
+El \textit{pipeline} clasifica automáticamente cada \textit{cluster} en un perfil de \textit{marketing} a partir del comportamiento medio de sus miembros, comparado con los percentiles 25 y 75 del dataset completo. Los perfiles posibles son:
+
+\begin{itemize}
+    \item \textbf{VIP}: alto valor y alta frecuencia. Programas de lealtad \textit{premium}, acceso anticipado a productos.
+    \item \textbf{Premium}: alto valor, baja frecuencia. Ofertas exclusivas, eventos VIP.
+    \item \textbf{Frecuentes}: bajo valor, alta frecuencia. \textit{Cross-selling}, descuentos por volumen.
+    \item \textbf{Nuevos}: recién llegados, bajo valor. Ofertas de bienvenida, \textit{onboarding} personalizado.
+    \item \textbf{Inactivos}: bajo \textit{engagement}. Campañas de reactivación.
+    \item \textbf{Regulares}: comportamiento estándar. \textit{Marketing mix} equilibrado.
+\end{itemize}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Detección automática de número de clusters}: HDBSCAN identifica 8 segmentos sin necesidad de fijar el valor a priori.
+    \item \textbf{Detección automática de anomalías}: 1.127 clientes (26,0\,\%) son clasificados como ruido y separados del análisis principal.
+    \item \textbf{Buena separación entre clusters}: las distribuciones de distancias intra e inter-\textit{cluster} (Figura~\ref{fig:hdbscan_distancias}) confirman que los grupos están diferenciados en el espacio.
+    \item \textbf{Capacidad de detectar clusters de densidad variable}: identifica simultáneamente grupos grandes y pequeños sin necesidad de elegir un único umbral de densidad.
+    \item \textbf{Búsqueda automática de hiperparámetros}: el \textit{pipeline} explora múltiples configuraciones y selecciona la más estable mediante una puntuación ponderada.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Silueta moderada}: el valor medio observado se sitúa por debajo del umbral típico (0,25--0,5) que indicaría una separación clara, lo que sugiere solapamientos entre algunos \textit{clusters}.
+    \item \textbf{Tamaños muy desbalanceados}: con 8 \textit{clusters} y un grupo mayoritario de 1.360 clientes (31,3\,\%) frente a algunos de menos de 100 clientes, el peso de los \textit{clusters} pequeños en una estrategia comercial es limitado.
+    \item \textbf{Porcentaje notable de ruido (26,0\,\%)}: aunque dentro del límite establecido (30\,\%), implica que uno de cada cuatro clientes no se asigna a ningún segmento, lo que puede dificultar acciones específicas sobre ellos.
+    \item \textbf{Mayor complejidad técnica}: HDBSCAN requiere una librería externa (\texttt{hdbscan}, fuera de \texttt{scikit-learn}) y la interpretación del árbol jerárquico es menos directa que la de modelos como K-Means.
+    \item \textbf{Sensibilidad a la selección de variables}: como cualquier modelo basado en densidad, la calidad del resultado depende de que las 9 variables elegidas capturen efectivamente la estructura de comportamiento.
+\end{itemize}
+
+% =============================================================================
+\section{Comparativa y modelo seleccionado}
+
+\subsection{Tabla comparativa de los cuatro modelos}
+
+El Cuadro~\ref{tab:comparativa_final} resume los resultados de los cuatro modelos sobre el mismo dataset común generado en la Parte~I. Los datos sirven como base para la decisión sobre el modelo a seleccionar como propuesta principal del proyecto.
+
+\begin{table}[h]
+\centering
+\caption{Comparativa de los cuatro modelos de \textit{clustering}}
+\label{tab:comparativa_final}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Aspecto} & \textbf{K-Means} & \textbf{Jerárquico} & \textbf{DBSCAN} & \textbf{HDBSCAN} \\
+\midrule
+\textit{Clusters} encontrados & 2 & 2 & 4 & 8 \\
+Clientes utilizados & 4.208 & 3.969 & 3.905 & 4.339 \\
+\% eliminado preprocesado & 3,0\,\% & 8,5\,\% & 10,0\,\% & --- \\
+\% ruido (sin asignar) & --- & --- & \textbf{49,3\,\%} & 26,0\,\% \\
+Silueta & 0,5257 & \textbf{0,7403} & 0,3386 & 0,248 \\
+Davies-Bouldin & --- & 0,7186 & 0,5999 & --- \\
+Calinski-Harabasz & --- & --- & 1.012,36 & --- \\
+Tamaño \textit{cluster} mín. & 535 (12,7\,\%) & 455 (11,5\,\%) & 2 (0,1\,\%) & 68 (1,6\,\%) \\
+Tamaño \textit{cluster} máx. & 3.673 (87,3\,\%) & 3.514 (88,5\,\%) & 1.092 (28,0\,\%) & 1.360 (31,3\,\%) \\
+Detección de \textit{outliers} & Externa (LOF) & Externa (P99+IF) & Nativa & Nativa \\
+PCA aplicado & 10 comp. (91,8\,\%) & 3 comp. (84,1\,\%) & 3 comp. (87,5\,\%) & No \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Las casillas marcadas con ``---'' corresponden a métricas no calculadas o no aplicables al modelo en cuestión.
+
+\subsection{Modelo seleccionado: K-Means}
+
+Tras analizar los cuatro modelos, el grupo selecciona como \textbf{modelo principal el K-Means} (versión con preprocesado mejorado mediante PCA + LOF), por las siguientes razones:
+
+\begin{itemize}
+    \item \textbf{Convergencia entre criterios}: las tres métricas internas (silueta 0,5257, Calinski-Harabasz y Davies-Bouldin) señalan unánimemente $k=2$ como configuración óptima, con una caída pronunciada y limpia de la silueta entre $k=2$ (0,5257) y $k=3$ (0,2627) que confirma la robustez de la elección.
+    \item \textbf{Silueta dentro del rango ``buena estructura''} ($>$0,5), suficiente para una segmentación operativa.
+    \item \textbf{Conservación de datos}: utiliza el 97\,\% del dataset original (4.208 sobre 4.339), frente al 91\,\% del jerárquico o el 50\,\% efectivo de DBSCAN tras el ruido.
+    \item \textbf{Simplicidad e interpretabilidad}: la naturaleza basada en centroides permite caracterizar cada \textit{cluster} con un punto representativo, facilitando que los resultados se transformen directamente en campañas de \textit{marketing} y acciones comerciales.
+    \item \textbf{Aplicabilidad directa en CRM}: la asignación de cada cliente a un segmento concreto se exporta a CSV y es directamente integrable con plataformas de automatización comercial.
+    \item \textbf{Rapidez y reproducibilidad}: el algoritmo es eficiente incluso en datasets grandes y, con \texttt{n\_init=50} y \texttt{random\_state=42}, los resultados son completamente reproducibles.
+\end{itemize}
+
+\subsection{Modelo de respaldo: Clustering Jerárquico}
+
+El \textbf{Clustering Jerárquico} queda documentado como \textbf{segunda opción válida}. Aunque ofrece una silueta superior (0,7403 vs 0,5257), su coste computacional es mayor ($O(n^2)$ en memoria) y la segmentación que produce es complementaria pero no esencialmente distinta de la del K-Means.
+
+Lo más relevante es que \textbf{dos algoritmos completamente diferentes} (K-Means basado en centroides y Jerárquico basado en distancias jerárquicas) \textbf{coinciden en $k=2$ con tamaños similares} (~12\,\% / ~88\,\%). Esta coincidencia es la mejor validación posible: la estructura encontrada es una propiedad real del dataset y no un artefacto de un método concreto. El dendrograma del jerárquico, además, aporta una herramienta de diagnóstico visual única que confirma visualmente que $K=2$ corresponde al corte natural del dataset.
+
+\subsection{Modelos descartados: DBSCAN y HDBSCAN}
+
+Los modelos basados en densidad (DBSCAN y HDBSCAN) se descartan como propuesta principal por los siguientes motivos:
+
+\begin{itemize}
+    \item \textbf{Elevado porcentaje de ruido}: DBSCAN clasifica el 49,3\,\% de los clientes como atípicos (casi la mitad del dataset queda sin asignar a ningún segmento) y HDBSCAN el 26,0\,\%. Para un proyecto de segmentación cuyo objetivo es accionar sobre toda la base de clientes, esto es una limitación crítica.
+    \item \textbf{Presencia de clusters minúsculos sin valor de negocio}: DBSCAN identifica un \textit{cluster} de solo 2 clientes y otro de 16. Aunque estadísticamente puedan mejorar las métricas, no son operativos para diseñar campañas comerciales.
+    \item \textbf{Métricas inferiores}: silueta de 0,3386 (DBSCAN) y 0,248 (HDBSCAN), claramente por debajo de los modelos seleccionados.
+    \item \textbf{Tamaños muy desbalanceados en HDBSCAN}: con 8 \textit{clusters} y un grupo mayoritario de 1.360 clientes frente a algunos de menos de 100, el peso de los \textit{clusters} pequeños en una estrategia comercial es limitado.
+\end{itemize}
+
+No obstante, el ejercicio de probarlos ha sido valioso porque demuestra que se han explorado enfoques alternativos basados en densidad y permite validar, por contraste, la elección final.
+
+\subsection{Conclusión final}
+
+La segmentación seleccionada divide la base de clientes en \textbf{dos grupos}, con tamaños aproximados del 12,7\,\% y 87,3\,\%. Esta estructura ha sido encontrada de forma independiente por dos algoritmos distintos (K-Means y Jerárquico), lo que aporta robustez metodológica. La propuesta final es por tanto utilizar K-Means como modelo de producción, con el Clustering Jerárquico como alternativa de validación cruzada.
+
+\end{document}
