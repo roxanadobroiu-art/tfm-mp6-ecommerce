@@ -1,6 +1,6 @@
 # Proyecto MP6 — Predicción de ventas y segmentación de clientes en e-commerce
 
-[![Status](https://img.shields.io/badge/status-finalizado-brightgreen)]()
+[![Status](https://img.shields.io/badge/status-en%20curso-yellow)]()
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
 [![Tools](https://img.shields.io/badge/tools-Colab%20%7C%20scikit--learn%20%7C%20pandas-orange)]()
 
