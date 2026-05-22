@@ -12,20 +12,25 @@ Predecir el importe total de ventas por día (suma de `importe_linea`) usando co
 
 ## 📊 División temporal
 
-- **Train/Validación:** 1 dic 2010 → 8 nov 2011
-- **Test:** 9 nov 2011 → 9 dic 2011
-- **Métrica principal:** RMSE
+| Conjunto | Periodo | Días con ventas |
+|---|---|---|
+| Train | 1 dic 2010 → 8 oct 2011 | 251 |
+| Validación | 9 oct 2011 → 8 nov 2011 | 27 |
+| Test | 9 nov 2011 → 9 dic 2011 | 27 |
+
+**Métrica principal:** RMSE (complementada con MAE, MAPE y R²).
 
 ---
 
 ## 🛠️ Pipeline de preprocesado
 
 1. **Carga y renombrado** del dataset original a español.
-2. **Limpieza básica:** duplicados, notas de crédito (prefijo `C`), cantidades ≤ 0, filas sin `id_cliente`.
+2. **Limpieza básica:** duplicados, notas de crédito (prefijo `C`), cantidades ≤ 0, filas sin `id_cliente`, precios no válidos.
 3. **Variables derivadas:** fechas, día de la semana, importe por línea, categoría de producto.
 4. **Detección de festivos por país** (con caché ISO).
-5. **Detección de outliers** con regla 1,5 IQR sobre cantidad, precio e importe.
-6. **Exportación** del dataset limpio.
+5. **Detección de outliers** con regla 1,5·IQR sobre cantidad, precio e importe (marcados con *flags*, no eliminados).
+6. **Regla de negocio:** se conservan los *outliers* que coinciden con festivos.
+7. **Exportación** del dataset limpio (361.126 filas marcadas para entrenamiento).
 
 ---
 
@@ -35,16 +40,31 @@ Predecir el importe total de ventas por día (suma de `importe_linea`) usando co
 |---|---|---|
 | `02_modelo_prophet.py` | Prophet | Series temporales descompuestas |
 | `03_modelo_arima.py` | ARIMA(1,1,1) | Series temporales clásicas |
-| `04_modelo_random_forest.py` | Random Forest | *Ensemble* de árboles |
+| `04_modelo_random_forest.py` | Random Forest | *Ensemble* de árboles (*bagging*) |
 | `05_modelo_xgboost.py` | XGBoost | *Gradient Boosting* |
 | `06_modelo_lstm.py` | LSTM | Red neuronal recurrente |
 | `07_regresion_polinomica.py` | Regresión Polinómica | Modelo lineal con términos polinómicos |
 
 ---
 
-## 📁 Contenido de esta carpeta
+## 🏆 Resultados (conjunto de test)
 
-```
+| Modelo | RMSE (GBP) | R² | MAE (GBP) |
+|---|---|---|---|
+| **XGBoost** ⭐ | **19.604** | **0,56** | **9.198** |
+| Random Forest | 27.402 | 0,14 | 13.083 |
+| ARIMA(1,1,1) | 31.688 | — | — |
+| LSTM | 35.401 | −0,19 | 24.007 |
+| Prophet | 35.789 | — | — |
+| Regresión Polinómica\* | 17.058 | −0,43 | 14.836 |
+
+⭐ **Modelo seleccionado: XGBoost.** Mejor RMSE y R² del conjunto, con 23 *features* construidas manualmente. Supera al *baseline naïve* en un +38,8 %.
+
+\* *El RMSE de la Regresión Polinómica es engañosamente bajo: su R² negativo indica que rinde peor que predecir la media, y su partición train/test es distinta a la del resto, por lo que no entra en el ranking competitivo.*
+
+---
+
+## 📁 Contenido de esta carpeta
 01-entrega-regresion/
 ├── datos/
 │   └── data.csv.zip                       # Dataset original (comprimido)
@@ -57,8 +77,8 @@ Predecir el importe total de ventas por día (suma de `importe_linea`) usando co
 │   ├── 06_modelo_lstm.py
 │   └── 07_regresion_polinomica.py
 └── memoria/
-    └── M-IA_C088_Entrega_Intermaedia1_GrupoH1.pdf
-```
+└── (memoria de la entrega en PDF)
+
 
 ---
 
@@ -74,10 +94,11 @@ Predecir el importe total de ventas por día (suma de `importe_linea`) usando co
 
 ## 📖 Memoria
 
-La memoria completa de esta entrega se encuentra en `memoria/`. Documenta el pipeline de preprocesado, la configuración de cada modelo, los resultados sobre validación y test, el análisis visual y las consideraciones de validez.
+La memoria completa de esta entrega se encuentra en `memoria/`. Documenta el pipeline de preprocesado, la configuración de cada modelo, los resultados sobre validación y test, el análisis visual y las consideraciones de validez de cada modelo, además de la comparativa final y la justificación de la elección de XGBoost.
 
 ---
 
 ## 🔗 Volver al README principal
 
 [← README principal del repositorio](../README.md)
+
