@@ -1,0 +1,2064 @@
+% =============================================================================
+% MEMORIA FINAL — TFM Módulo MP6 — Grupo H1
+% Máster en IA y Big Data
+% Predicción de ventas (regresión) + Segmentación de clientes (clustering)
+% Compilar con pdflatex (2 pasadas para índice y referencias).
+% =============================================================================
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{caption}
+\usepackage{fancyhdr}
+
+\definecolor{azultfm}{HTML}{065A82}
+\definecolor{tealtfm}{HTML}{1C7293}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=azultfm,
+    urlcolor=tealtfm,
+    citecolor=tealtfm
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    frame=single,
+    rulecolor=\color{gray!50},
+    backgroundcolor=\color{gray!5},
+    language=Python,
+    extendedchars=true,
+    inputencoding=utf8,
+    literate=
+        {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+        {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+        {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ç}{{\c{c}}}1 {Ç}{{\c{C}}}1
+        {ü}{{\"u}}1 {Ü}{{\"U}}1 {¿}{{?`}}1 {¡}{{!`}}1
+}
+
+% Caja para los huecos de figuras pendientes de insertar
+\newtcolorbox{figurapendiente}{
+    colback=yellow!10, colframe=orange!70, boxrule=0.8pt,
+    arc=2pt, left=6pt, right=6pt, top=4pt, bottom=4pt
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gray}{Memoria final — TFM MP6}}
+\fancyhead[R]{\small\textcolor{gray}{Grupo H1}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% -----------------------------------------------------------------------------
+\begin{document}
+
+% Forzar etiquetas en español (por si babel-spanish no carga)
+\renewcommand{\contentsname}{Índice}
+\renewcommand{\tablename}{Cuadro}
+\renewcommand{\figurename}{Figura}
+\renewcommand{\refname}{Referencias}
+\renewcommand{\partname}{Parte}
+
+% ===================== PORTADA =====================
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+{\Huge\bfseries\textcolor{azultfm}{Memoria Final del Proyecto}\par}
+\vspace{0.5cm}
+{\LARGE Predicción de ventas y segmentación\\[0.2cm] de clientes en e-commerce\par}
+
+\vspace{1.5cm}
+\rule{0.6\textwidth}{1.5pt}\par
+\vspace{1cm}
+
+{\large Módulo MP6 — Proyecto de IA y Big Data\par}
+{\large Máster en IA y Big Data\par}
+
+\vspace{2cm}
+
+{\large\bfseries Grupo H1\par}
+
+\vfill
+
+{\large Dataset: \textit{E-Commerce Data} (Kaggle / UCI)\par}
+{\large Reino Unido · 2010–2011\par}
+
+\vspace{1cm}
+\end{titlepage}
+
+% ===================== ÍNDICE =====================
+\tableofcontents
+\newpage
+
+% =============================================================================
+% INTRODUCCIÓN GENERAL
+% =============================================================================
+\section*{Introducción general}
+\addcontentsline{toc}{section}{Introducción general}
+
+Esta memoria recoge el trabajo completo del proyecto del módulo MP6, desarrollado en dos fases complementarias sobre un mismo conjunto de datos: el dataset público \textit{E-Commerce Data} (Kaggle / UCI), que recopila las transacciones de una tienda británica de regalos y artículos decorativos entre diciembre de 2010 y diciembre de 2011.
+
+El proyecto aborda dos problemas de naturaleza distinta pero complementaria. En la \textbf{primera parte} se plantea un problema de \textbf{regresión}: predecir las ventas diarias de la tienda a partir del histórico de transacciones, empleando tanto modelos de series temporales clásicos como algoritmos de \textit{machine learning}. En la \textbf{segunda parte} se aborda un problema de \textbf{clustering}: segmentar la base de clientes en grupos homogéneos de comportamiento que permitan diseñar acciones de \textit{marketing} personalizadas.
+
+Ambas fases comparten el mismo origen de datos y una filosofía de preprocesado común, lo que permite que el conocimiento adquirido en la primera fase (limpieza, tratamiento de \textit{outliers}, generación de variables) se reutilice en la segunda. La memoria culmina con una \textbf{parte de conclusiones y reflexión} que integra los aprendizajes de ambos proyectos y ofrece una visión global del trabajo realizado.
+
+\subsection*{Equipo de trabajo}
+
+Este proyecto ha sido desarrollado por el \textbf{Grupo H1} del módulo MP6 del Máster en IA y Big Data, integrado por:
+
+\begin{itemize}
+    \item \textbf{Paula Ruiz de la Parra}
+    \item \textbf{Elena Roxana Dobroiu}
+    \item \textbf{Julián David Dionisio Rey}
+    \item \textbf{Javier Santos Rodriguez}
+\end{itemize}
+
+\subsection*{Repositorio del proyecto}
+
+Todo el código fuente (scripts de limpieza y modelos), los datasets y la documentación del proyecto están disponibles en el repositorio público de GitHub:
+
+\begin{center}
+\url{https://github.com/roxanadobroiu-art/tfm-mp6-ecommerce}
+\end{center}
+
+El repositorio se organiza en dos entregas (\texttt{01-entrega-regresion} y \texttt{02-entrega-clustering}), cada una con sus carpetas de datos, \textit{notebooks} y memoria correspondiente.
+
+\newpage
+
+% #############################################################################
+% PARTE I — REGRESIÓN
+% #############################################################################
+\part*{\textcolor{azultfm}{Parte I — Regresión: predicción de ventas diarias}}
+\addcontentsline{toc}{section}{\textbf{PARTE I — REGRESIÓN}}
+\vspace{0.5cm}
+
+\section{Introducción y contexto}
+
+El objetivo de este proyecto es predecir las ventas diarias de una tienda de e-commerce del Reino Unido mediante modelos de regresión y series temporales. Para ello se utiliza el dataset público \textit{E-Commerce Data} (Kaggle / UCI), que recoge todas las transacciones realizadas entre diciembre de 2010 y diciembre de 2011. La tienda se dedica a la venta de regalos y artículos decorativos, con una parte significativa de clientes mayoristas.
+
+La estrategia de limpieza es \textbf{conservadora}: los \textit{outliers} no se eliminan del archivo final, sino que se marcan con \textit{flags} booleanos para que cada modelo (regresión, clustering) decida cómo tratarlos. Solo se descartan las filas que no aportan información útil (duplicados exactos, cancelaciones, registros sin cliente y precios no válidos). El archivo exportado incluye además una columna \texttt{conservar\_para\_clustering} que indica directamente qué filas conviene usar al entrenar, sin eliminarlas físicamente del dataset.
+
+\section{Configuración inicial del pipeline}
+
+Antes de cargar los datos se definen tres parámetros de configuración que controlan el comportamiento del pipeline de limpieza y detección de \textit{outliers}:
+
+\begin{lstlisting}
+MIN_FILAS_POR_GRUPO = 10
+USAR_LOG_IQR = False
+ELIMINAR_NO_FESTIVO = True
+\end{lstlisting}
+
+\begin{itemize}
+    \item \texttt{MIN\_FILAS\_POR\_GRUPO}: umbral mínimo de filas por grupo país + mes para calcular IQR. Los grupos más pequeños se saltan en la detección de \textit{outliers} por grupo porque los cuartiles serían poco fiables.
+    \item \texttt{USAR\_LOG\_IQR}: activa la detección de \textit{outliers} por IQR logarítmico (\texttt{log1p} del importe). Útil cuando la distribución es muy asimétrica. Por defecto está desactivado.
+    \item \texttt{ELIMINAR\_NO\_FESTIVO}: controla si las filas marcadas como candidatas a eliminar (\textit{outliers} que no coinciden con festivo del país) se filtran al exportar. En cualquier caso, el dataset final conserva el \textit{flag} para que el filtrado sea reversible.
+\end{itemize}
+
+El diseño del pipeline separa \textit{detección} de \textit{eliminación}: todos los \textit{outliers} se marcan con \textit{flags}, y solo al final se decide qué hacer con ellos. Esto permite regenerar distintas versiones del dataset sin rehacer la limpieza.
+
+\section{Carga, renombrado y limpieza}
+
+El dataset se carga con codificación \texttt{latin-1} por caracteres especiales incompatibles con UTF-8, y las columnas se renombran al español por coherencia con el contexto académico y para integración con Power BI. Estado inicial: \textbf{541.909 filas, 8 columnas}.
+
+\begin{lstlisting}
+df_raw = pd.read_csv(RUTA_ENTRADA, encoding="latin-1")
+df = df_raw.rename(columns={
+    "InvoiceNo": "numero_factura", "StockCode": "codigo_producto",
+    "Description": "descripcion_original", "Quantity": "cantidad",
+    "InvoiceDate": "fecha_factura_original", "UnitPrice": "precio_unitario",
+    "CustomerID": "id_cliente", "Country": "pais",
+}).copy()
+\end{lstlisting}
+
+A continuación se aplican los filtros de limpieza. Primero se eliminan \textbf{duplicados exactos} (filas idénticas en todas las columnas, producidas por errores de ingesta como doble registro):
+
+\begin{lstlisting}
+df = df.drop_duplicates().copy()
+\end{lstlisting}
+
+\noindent$\rightarrow$ 5.268 duplicados eliminados (0,97 \%).
+
+Después se eliminan \textbf{notas de crédito, devoluciones y cancelaciones}. Las facturas con prefijo ``C'' son cancelaciones del sistema; las cantidades $\leq 0$ corresponden a ajustes manuales. Se fuerza además la conversión explícita de cantidad a numérico para detectar entradas malformadas:
+
+\begin{lstlisting}
+mask_nota_credito = df["numero_factura"].astype(str).str.startswith("C")
+df = df[~mask_nota_credito].copy()
+df["cantidad"] = pd.to_numeric(df["cantidad"], errors="coerce")
+df = df[df["cantidad"] > 0].copy()
+\end{lstlisting}
+
+\noindent$\rightarrow$ 9.251 notas de crédito detectadas; 10.587 filas eliminadas entre notas y cantidades $\leq 0$.
+
+A continuación se eliminan las \textbf{filas sin identificador de cliente} (aprox. 24,9 \% del dataset). Son compras anónimas, transacciones de prueba o errores de captura, sin trazabilidad posible:
+
+\begin{lstlisting}
+df = df.dropna(subset=["id_cliente"]).copy()
+\end{lstlisting}
+
+Finalmente se aplica una \textbf{validación sobre \texttt{precio\_unitario}}: se convierte a numérico, se eliminan los valores nulos tras la conversión y se descartan precios $\leq 0$ (productos gratuitos, ajustes, errores de captura que distorsionarían el cálculo del importe):
+
+\begin{lstlisting}
+df["precio_unitario"] = pd.to_numeric(df["precio_unitario"], errors="coerce")
+df = df.dropna(subset=["precio_unitario"]).copy()
+df = df[df["precio_unitario"] > 0].copy()
+\end{lstlisting}
+
+\noindent$\rightarrow$ 40 filas adicionales eliminadas (nulos tras conversión y precios $\leq 0$).
+
+\section{Variables derivadas}
+
+Se crean varias columnas nuevas a partir de los datos originales, agrupadas en bloques de fecha, temporalidad, categoría y económicas.
+
+\textbf{Fecha y temporalidad.} La fecha se convierte de texto a \texttt{datetime} con control de errores, y se descomponen los niveles temporales útiles para el análisis por país-mes y para la regresión diaria:
+
+\begin{lstlisting}
+df["fecha_completa"] = pd.to_datetime(
+    df["fecha_factura_original"], errors="coerce")
+df = df.dropna(subset=["fecha_completa"]).copy()
+df["fecha"]        = df["fecha_completa"].dt.normalize()
+df["anio"]         = df["fecha"].dt.year
+df["mes"]          = df["fecha"].dt.month
+df["trimestre"]    = df["fecha"].dt.quarter
+df["semana_anio"]  = df["fecha"].dt.isocalendar().week.astype(int)
+df["anio_mes"]     = df["fecha"].dt.to_period("M").astype(str)
+df["fin_de_semana"]= df["fecha"].dt.dayofweek >= 5
+\end{lstlisting}
+
+Se añaden además el día de la semana en formato numérico (1--7) y su equivalente en texto mediante diccionarios de mapeo.
+
+\textbf{Categorización de productos.} El dataset no tiene categorías, así que se clasifican por palabras clave en la descripción (``christmas'' $\rightarrow$ navidad, ``heart''/``love'' $\rightarrow$ romántico, ``baby'' $\rightarrow$ bebé, ``birthday'' $\rightarrow$ cumpleaños, etc.). Los no-productos (envíos, ajustes, descuentos) se marcan con \texttt{flag\_no\_producto} pero no se eliminan:
+
+\begin{lstlisting}
+def clasificar_producto(descripcion):
+    descripcion = str(descripcion).lower()
+    if "christmas" in descripcion:
+        return "navidad"
+    if "heart" in descripcion or "love" in descripcion \
+       or "valentine" in descripcion:
+        return "romantico"
+    if "baby" in descripcion:
+        return "bebe"
+    if "birthday" in descripcion:
+        return "cumpleanos"
+    if "postage" in descripcion or "manual" in descripcion \
+       or "discount" in descripcion:
+        return "no_producto"
+    return "otros"
+\end{lstlisting}
+
+\textbf{Importe.} Se calcula el importe por línea (\texttt{cantidad} $\times$ \texttt{precio\_unitario}) y se genera también una columna de texto con formato decimal español (punto = miles, coma = decimales) para su uso en Power BI.
+
+\section{Detección de outliers}
+
+La detección de \textit{outliers} combina \textbf{cuatro flags complementarios} que dan distintos niveles de granularidad, desde una visión global del dataset hasta una detección contextual por grupo.
+
+\textbf{Flag contextual por país + mes.} Para cada combinación (\texttt{pais}, \texttt{mes}) se recalcula el IQR sobre \texttt{importe\_linea} y se marca la fila como \texttt{out\_iqr}. Esto reconoce que un importe que es \textit{outlier} en España en enero puede ser completamente normal en Reino Unido en diciembre. Además se registra \texttt{grupo\_size} con el número de filas de cada grupo, útil para diagnóstico posterior.
+
+\begin{lstlisting}
+for (pais, mes), grupo in df.groupby(["pais", "mes"]):
+    tamanio = len(grupo)
+    df.loc[grupo.index, "grupo_size"] = tamanio
+    if tamanio < MIN_FILAS_POR_GRUPO:
+        continue
+    lim_inf, lim_sup = calcular_limites_iqr(grupo["importe_linea"])
+    df.loc[grupo.index, "out_iqr"] = (
+        (grupo["importe_linea"] < lim_inf) |
+        (grupo["importe_linea"] > lim_sup))
+\end{lstlisting}
+
+\textbf{Flag log-IQR opcional.} Como variante, también se calcula \texttt{out\_log\_iqr} aplicando IQR sobre \texttt{log1p(importe\_linea)}. Es útil cuando la distribución de importes es muy asimétrica, caso común en e-commerce con clientes mayoristas. Se activa con el parámetro \texttt{USAR\_LOG\_IQR}.
+
+\textbf{Flags globales.} A continuación se aplica una pasada IQR global sobre las tres variables numéricas principales (cantidad, precio e importe), que aporta una detección a nivel de todo el dataset complementaria a la contextual.
+
+\begin{table}[h]
+\centering
+\caption{Flags de \textit{outliers} disponibles en el dataset final}
+\begin{tabular}{lll}
+\toprule
+\textbf{Flag} & \textbf{Ámbito} & \textbf{Descripción} \\
+\midrule
+\texttt{flag\_outlier\_cantidad} & Global & IQR sobre cantidad (25.616 marcados) \\
+\texttt{flag\_outlier\_precio} & Global & IQR sobre precio\_unitario (34.112) \\
+\texttt{flag\_outlier\_importe\_global} & Global & IQR sobre importe\_linea (31.231) \\
+\texttt{out\_iqr} & País + mes & IQR contextual sobre importe (31.654) \\
+\texttt{out\_log\_iqr} & País + mes & Variante logarítmica (9.368) \\
+\texttt{grupo\_size} & País + mes & Tamaño del grupo (diagnóstico) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El flag contextual \texttt{out\_iqr} (31.654) detecta un volumen similar al global (31.231), pero sobre conjuntos parcialmente distintos: captura importes que son anómalos dentro de su propio grupo país+mes aunque no destaquen en el conjunto total. La versión logarítmica es mucho más permisiva (9.368), coherente con el hecho de que \texttt{log1p} comprime la cola de importes altos típica del comercio mayorista.
+
+\section{Detección de festivos por país}
+
+Los festivos impactan directamente en ventas (picos de Navidad y Black Friday, caídas en festivos locales). Como el dataset tiene clientes de múltiples países, un mismo día puede ser festivo en uno y no en otro, por lo que el cálculo se hace \textbf{por país del cliente}.
+
+El sistema se apoya en tres piezas. Primero, un \textbf{mapa país-ISO} que cubre todos los países presentes en el dataset (más de 30: Reino Unido, España, Alemania, Francia, Países Bajos, Suecia, Noruega, Dinamarca, Italia, Suiza, Bélgica, Australia, Canadá, Estados Unidos, Irlanda, etc.). Segundo, la función de resolución usa \texttt{CountryHoliday} con \textbf{caché local por código ISO} y \textit{fallback} por nombre del país si el ISO no está en el mapa. Tercero, y por rendimiento, el calendario se consulta únicamente sobre los \textbf{candidatos a outlier}, no sobre todo el dataset. Para cada candidato se comprueba si su fecha coincide con un festivo del calendario de su país y, si es así, se guarda el nombre del festivo en la columna \texttt{tipo\_fiesta}, que se usa después en la regla de negocio.
+
+\section{Regla de negocio y decisión final}
+
+Con los flags ya calculados, el pipeline aplica una regla de negocio sencilla pero potente: una fila marcada como \texttt{out\_iqr} (\textit{outlier} en su grupo país+mes) se considera \textbf{candidata a eliminar solo si no coincide con un festivo} en el calendario del país. La lógica es que los picos de venta en fechas señaladas (Black Friday, Navidad, San Valentín, festivos locales) son comportamiento real, no errores.
+
+\begin{lstlisting}
+df["eliminado_no_festivo"] = False
+mask_eliminar = df["out_iqr"] & (df["tipo_fiesta"] == "")
+df.loc[mask_eliminar, "eliminado_no_festivo"] = True
+df["conservar_para_clustering"] = ~df["eliminado_no_festivo"]
+\end{lstlisting}
+
+La columna \texttt{conservar\_para\_clustering} es la \textbf{salida definitiva} del bloque de limpieza: indica directamente qué filas se recomiendan para entrenar modelos.
+
+\noindent$\rightarrow$ De los 31.654 \textit{outliers} detectados por \texttt{out\_iqr}, solo \textbf{88 coinciden con un festivo} (0,28 \%). Por tanto, 31.566 filas se marcan como \texttt{eliminado\_no\_festivo} y \textbf{361.126 filas} se marcan como \texttt{conservar\_para\_clustering = True}.
+
+\textbf{Importante:} el archivo exportado es único y completo. Las filas marcadas como \texttt{eliminado\_no\_festivo} no se borran físicamente, solo quedan etiquetadas. Cada modelo puede filtrar por \texttt{conservar\_para\_clustering == True} si quiere el dataset limpio, o acceder a todos los registros si le interesa analizar también los \textit{outliers}.
+
+\section{Exportación y resumen}
+
+El archivo de salida contiene un subconjunto de columnas seleccionado pensado específicamente para el flujo de clustering y regresión. Se omiten columnas intermedias que ya han cumplido su función durante la limpieza.
+
+\begin{table}[h]
+\centering
+\caption{Reducción de filas por etapa}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Etapa} & \textbf{Eliminadas} & \textbf{Restantes} & \textbf{\% conservado} \\
+\midrule
+Dataset original & --- & 541.909 & 100 \% \\
+Duplicados exactos & 5.268 & 536.641 & 99,0 \% \\
+Notas de crédito / cancelaciones & 10.587 & 526.054 & 97,1 \% \\
+Filas sin id\_cliente & 133.322 & 392.732 & 72,5 \% \\
+Precios no válidos ($\leq 0$ o nulos) & 40 & 392.692 & 72,5 \% \\
+\midrule
+\textbf{Dataset tras limpieza básica} & \textbf{149.217} & \textbf{392.692} & \textbf{72,5 \%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Resultados de la detección de \textit{outliers} y decisión final}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Concepto} & \textbf{Filas} & \textbf{\% s/limpio} \\
+\midrule
+Outliers globales en cantidad & 25.616 & 6,5 \% \\
+Outliers globales en precio & 34.112 & 8,7 \% \\
+Outliers globales en importe & 31.231 & 8,0 \% \\
+Outliers IQR por país+mes (\texttt{out\_iqr}) & 31.654 & 8,1 \% \\
+Outliers log-IQR por país+mes & 9.368 & 2,4 \% \\
+\midrule
+Outliers coincidentes con festivo & 88 & 0,02 \% \\
+Outliers eliminados por no ser festivo & 31.566 & 8,0 \% \\
+\midrule
+\textbf{Filas marcadas para entrenamiento} & \textbf{361.126} & \textbf{91,9 \%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El archivo exportado contiene las 392.692 filas y 25 columnas seleccionadas. De estas, 361.126 filas quedan marcadas con \texttt{conservar\_para\_clustering = True} (el 91,9 \% del dataset limpio). Solo 88 de los 31.654 \textit{outliers} por país+mes coinciden con un festivo del calendario del país (un 0,3 \%). Esto sugiere que la mayor parte de los picos de venta no están directamente ligados a festivos oficiales, sino a fenómenos no calendarios (campañas de \textit{marketing}, ventas mayoristas puntuales). La regla de conservar los festivos sigue teniendo sentido como red de seguridad, pero aporta menos de lo que cabría esperar a priori. Librerías utilizadas: \texttt{pandas}, \texttt{numpy}, \texttt{holidays}, \texttt{pathlib}.
+
+
+\newpage
+\section*{\textcolor{azultfm}{Parte II — Modelos de predicción}}
+\addcontentsline{toc}{section}{Parte II — Modelos de predicción}
+
+\section{Planteamiento y preparación de datos}
+
+\textbf{Variable objetivo:} importe total de ventas por día (suma de \texttt{importe\_linea}). Es un problema de \textbf{regresión sobre serie temporal}. La métrica principal es el \textbf{RMSE}, complementada con MAE, MAPE y R$^2$.
+
+Para el entrenamiento se filtra el dataset por \texttt{conservar\_para\_clustering} y se excluyen no-productos, reduciendo de 392.692 a 361.126 filas. Las ventas se agregan por día para obtener la serie temporal. Se usa una división en \textbf{train / validación / test} donde validación y test tienen la misma duración (un mes) para que el error estimado sea representativo.
+
+\begin{table}[h]
+\centering
+\caption{División temporal del dataset}
+\begin{tabular}{llr}
+\toprule
+\textbf{Conjunto} & \textbf{Periodo} & \textbf{Días con ventas} \\
+\midrule
+Train & 1 dic 2010 $\rightarrow$ 8 oct 2011 & 251 \\
+Validación & 9 oct 2011 $\rightarrow$ 8 nov 2011 & 27 \\
+Test & 9 nov 2011 $\rightarrow$ 9 dic 2011 & 27 \\
+\midrule
+\textbf{Total} & & \textbf{305} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Validación y test tienen 27 días (no 31) porque hay días sin transacciones: principalmente domingos, que apenas registran ventas en el dataset. Los modelos Regresión Polinómica y LSTM usan una partición propia, detallada en su sección correspondiente.
+
+\section{Modelo Prophet}
+
+\subsection{Descripción del modelo}
+
+Prophet es un modelo de previsión de series temporales desarrollado por Meta. Está pensado para series univariantes con fuerte componente estacional y prioriza que analistas no expertos obtengan predicciones razonables sin apenas ajuste. Descompone la serie como $y(t) = g(t) + s(t) + h(t) + \varepsilon_t$, donde $g(t)$ es la tendencia (lineal por tramos con \textit{changepoints} automáticos), $s(t)$ la estacionalidad mediante series de Fourier, $h(t)$ el efecto de festivos y $\varepsilon_t$ el ruido.
+
+Los parámetros más relevantes son: \texttt{yearly\_seasonality}, \texttt{weekly\_seasonality} y \texttt{daily\_seasonality} (activación de estacionalidades); \texttt{changepoint\_prior\_scale} (flexibilidad de la tendencia); \texttt{seasonality\_prior\_scale} (magnitud estacional); \texttt{holidays} (calendario de fechas especiales); y \texttt{growth} (\texttt{linear} o \texttt{logistic}). Prophet devuelve también un intervalo de confianza (\texttt{yhat\_lower}, \texttt{yhat\_upper}) al 80\,\% por defecto.
+
+\subsection{Configuración del entrenamiento}
+
+Se usa una configuración base con las tres estacionalidades ajustadas a la granularidad y cobertura del dataset: \texttt{yearly\_seasonality=True} (cobertura $\sim$1 año), \texttt{weekly\_seasonality=True} (patrón intrasemanal claro) y \texttt{daily\_seasonality=False} (no aplica con granularidad diaria). El resto de parámetros se dejan por defecto para establecer una línea base antes de optimizar.
+
+La estrategia de evaluación consta de dos pasos: (1) ajuste sobre train y evaluación sobre validación para estimar el error esperado; (2) reentrenamiento sobre train + validación y predicción final sobre test. Para la predicción se pasan directamente las fechas del conjunto a evaluar (\texttt{predict(val[["ds"]])}) en lugar de usar \texttt{make\_future\_dataframe}, que extendería días consecutivos y generaría desalineamientos con los días sin transacciones.
+
+Para este modelo se ha usado el dataset \textbf{sin filtrar} por \texttt{conservar\_para\_clustering} y sin excluir no-productos, respetando la indicación del Tema 2 de utilizar el dataset tal como se proporciona. Esto permite medir el modelo en las condiciones menos favorables: ventas brutas sin limpieza adicional.
+
+\subsection{Predicciones y evaluación}
+
+\begin{table}[h]
+\centering
+\caption{Resultados del modelo Prophet (configuración base)}
+\begin{tabular}{lr}
+\toprule
+\textbf{Conjunto} & \textbf{RMSE (GBP)} \\
+\midrule
+Validación (9 oct -- 8 nov 2011) & 23.040,22 \\
+Test (9 nov -- 9 dic 2011) & 35.788,57 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El RMSE pasa de 23.040 en validación a 35.789 en test (+55 \%). La diferencia es significativa y apunta a que el periodo de test (primera mitad de diciembre) tiene un comportamiento distinto al del mes anterior.
+
+\subsection{Análisis visual de los resultados}
+
+Se generan cinco visualizaciones con paleta Okabe-Ito (accesible en escala de grises y para daltonismo) para diagnosticar el comportamiento del modelo.
+
+La \textbf{división temporal} muestra la serie completa con cada partición en un color distinto; se aprecia un pico atípico en el último día del test (9-dic-2011) muy alejado del comportamiento habitual. La \textbf{predicción sobre el histórico completo} confronta las observaciones reales con la predicción y su intervalo de confianza al 80\,\%: el modelo aprende correctamente la estacionalidad semanal, pero en test los puntos quedan sistemáticamente por encima de la curva predicha. El \textbf{detalle real vs predicho en test} amplía el mes de evaluación y evidencia que la curva real se mantiene por encima de la predicción casi todo el mes, con el pico del último día dominando el RMSE. Los \textbf{residuales diarios} confirman el diagnóstico: solo 3 de los 27 días tienen residuo negativo; los 24 restantes son positivos, evidencia de un sesgo estructural de infravaloración. Finalmente, la \textbf{descomposición} separa la serie en tendencia, estacionalidad semanal (pico los jueves, mínimo los domingos) y anual (subida pre-navideña entre septiembre y noviembre).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_regresion/prophet_1_division.jpeg}
+\caption{Ventas diarias con división train / validación / test.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_regresion/prophet_2_test.jpeg}
+\caption{Real vs Prophet sobre el periodo de test.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/prophet_3.jpeg}
+\caption{Predicción Prophet sobre el histórico con intervalo de confianza al 80\,\%.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/prophet_4.jpeg}
+\caption{Residuales diarios (real $-$ predicho) en test: 24 de 27 son positivos.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/prophet_5.jpeg}
+\caption{Descomposición en tendencia, estacionalidad semanal y anual.}
+\end{figure}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+En el lado positivo, Prophet captura correctamente la estructura estacional (semanal y anual), identifica automáticamente el periodo pre-navideño y genera intervalos de confianza nativos. La configuración es mínima y el entrenamiento rápido. En el lado negativo, el RMSE en test sube un 55 \% respecto al de validación y el análisis de residuales revela un \textbf{sesgo sistemático}: 24 de 27 días infravaloran la venta real, por lo que el modelo no anticipa bien la recta final de la campaña navideña; además, el pico del 9-dic-2011 distorsiona el RMSE. Su validez como \textbf{línea base} es clara: referencia interpretable, rápida y con diagnóstico visual rico. Como modelo definitivo requeriría contrastar con alternativas y, de mantenerse, ajustar \texttt{changepoint\_prior\_scale}, incorporar un calendario de festivos explícito y usar el dataset filtrado por \texttt{conservar\_para\_clustering}.
+
+\textbf{Limitaciones.} Sesgo de infravaloración en diciembre (24 de 27 residuos positivos); sensibilidad al pico del 9-dic-2011 que domina el RMSE; tendencia contraintuitiva, probable artefacto del dataset bruto; horizonte corto de histórico ($\sim$1 año, un único ciclo anual); ausencia de variables exógenas (festivos explícitos, campañas).
+
+\textbf{Beneficios.} Curva de aprendizaje baja (resultados razonables con pocas líneas); descomposición interpretable con \textit{insight} de negocio inmediato; intervalos de confianza nativos; robustez frente a días sin datos (domingos); diagnóstico visual rico con \texttt{plot\_components()}.
+
+\section{Modelo ARIMA}
+
+\subsection{Descripción del modelo}
+
+ARIMA (\textit{AutoRegressive Integrated Moving Average}) es un modelo clásico de series temporales univariante, que predice valores futuros usando únicamente los valores pasados de la propia serie, sin variables exógenas. Se define como ARIMA($p$, $d$, $q$), donde $p$ es el número de valores pasados utilizados como predictores (componente autorregresiva), $d$ el número de diferenciaciones aplicadas para hacer la serie estacionaria (integración) y $q$ el número de errores pasados considerados (media móvil).
+
+En este estudio se ha utilizado un \textbf{ARIMA(1,1,1)}: un valor pasado de la serie, una diferenciación para eliminar tendencia y un error pasado. Los parámetros principales son \texttt{order} (la tupla $(p,d,q)$), \texttt{seasonal\_order} (extensión SARIMA, no utilizada aquí) y los parámetros de ajuste del método de optimización interno.
+
+\subsection{Configuración del entrenamiento}
+
+Se implementa con \texttt{statsmodels.tsa.arima.model.ARIMA} sobre la serie diaria de \texttt{importe\_linea} agregada por fecha. Se aplica una división train / test simple (sin conjunto de validación): train hasta el 8-nov-2011 y test desde el 9-nov-2011 al 9-dic-2011. La estrategia consiste en ajustar el modelo solo con train y predecir los días del test mediante \texttt{forecast(steps=len(test))}, reindexando las predicciones con las fechas reales del test para mantener el alineamiento temporal.
+
+Los hiperparámetros $(p,d,q)=(1,1,1)$ se han seleccionado manualmente, sin optimización automática (no se aplica \textit{grid search} ni \texttt{auto\_arima}). Esto permite establecer una línea base clásica de series temporales para contrastar con modelos más flexibles como Prophet. A diferencia del flujo con Prophet, aquí no se usa conjunto de validación: ARIMA se entrena con todo lo anterior al test, ya que \texttt{forecast()} extiende la serie de forma secuencial paso a paso y para esta línea base no se optimizan hiperparámetros que requieran validación previa.
+
+\subsection{Predicciones y evaluación}
+
+\begin{table}[H]
+\centering
+\caption{Resultados del modelo ARIMA(1,1,1)}
+\begin{tabular}{lr}
+\toprule
+\textbf{Conjunto} & \textbf{RMSE (GBP)} \\
+\midrule
+Test (9 nov 2011 -- 9 dic 2011) & 31.688,40 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Dado que las ventas diarias oscilan habitualmente entre 20.000 y 50.000 GBP, con picos de hasta $\sim$180.000 en fechas señaladas, un RMSE de 31.688,40 es elevado en proporción a la escala de la serie. El modelo no consigue reproducir con precisión el comportamiento de las ventas en el periodo de test.
+
+\subsection{Análisis visual de los resultados}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/arima_1.png}
+\caption{ARIMA(1,1,1) sobre \texttt{importe\_linea} diario. Azul: train. Naranja con círculos: valores reales del test. Morado discontinuo: predicción. Línea gris punteada: inicio del test.}
+\end{figure}
+
+La gráfica compara la serie de entrenamiento, los valores reales del test y la predicción generada por ARIMA. El tramo de train muestra una serie con variabilidad clara: periodos estables alternados con incrementos puntuales. El tramo de test mantiene ese comportamiento de forma aún más acentuada, con cambios bruscos y picos de mayor magnitud, varios de ellos concentrados en fechas concretas (indicios de campaña pre-navideña y festivos). La curva de predicción, en cambio, evoluciona de forma prácticamente \textbf{constante en torno a 40.000 GBP}: no reproduce ni la variabilidad ni los picos del test. El contraste entre ambas series es nítido y pone en evidencia que el modelo no captura la dinámica real.
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+El RMSE obtenido es elevado en relación con el rango de la serie, lo que indica una diferencia significativa entre predicción y realidad. El análisis visual lo confirma: la predicción es una línea prácticamente plana, incapaz de reflejar la variabilidad ni los picos. Esto apunta a un modelo que no ha logrado capturar la estructura temporal subyacente, a pesar de que la diferenciación ($d=1$) sí ha conseguido una serie aparentemente estacionaria.
+
+Estas limitaciones son coherentes con las características del modelo. Al ser \textbf{univariante}, ARIMA solo dispone de los valores pasados de la propia serie, sin posibilidad de incorporar información sobre festivos, campañas u otros factores externos que explicarían los incrementos observados en fechas concretas. Además, una configuración ARIMA(1,1,1) es estructuralmente simple: un único término autorregresivo y un único término de media móvil tienen una capacidad limitada para modelar series con picos pronunciados y estacionalidad anidada (semanal + anual). Por último, la diferenciación necesaria para la estacionariedad ($d=1$), aunque imprescindible, arrastra cierta pérdida de información sobre la estructura original de la serie.
+
+A la vista de estos resultados, ARIMA(1,1,1) no resulta adecuado como modelo predictivo principal para este conjunto de datos. Podría mejorarse con búsqueda automática de hiperparámetros (\texttt{auto\_arima}) o migrando a una variante SARIMA capaz de modelar la estacionalidad semanal y anual, pero incluso así seguiría sin incorporar variables exógenas relevantes. Su validez se limita a la de una \textbf{línea base clásica}, útil para contrastar con modelos más sofisticados.
+
+\textbf{Limitaciones.} Modelo univariante sin capacidad de incorporar festivos ni campañas; configuración (1,1,1) demasiado simple para una serie con picos acusados; predicción prácticamente plana que no reproduce la variabilidad observada; no captura la estacionalidad semanal ni anual (faltaría una variante SARIMA); hiperparámetros seleccionados manualmente, sin búsqueda sistemática.
+
+\textbf{Beneficios.} Modelo clásico bien entendido y ampliamente documentado; implementación directa en \texttt{statsmodels} con muy pocas líneas de código; útil como línea base de referencia; no requiere \textit{feature engineering}; interpretabilidad estadística clara (coeficientes AR y MA con significado directo).
+
+\section{Modelo Regresión Polinómica}
+
+\subsection{Descripción del modelo}
+
+La Regresión Polinómica extiende la regresión lineal simple transformando la variable independiente en potencias de grado superior ($x$, $x^2$, $x^3$, \dots), lo que permite ajustar curvas no lineales a los datos. Se trata de un modelo de aprendizaje supervisado que busca la curva polinómica que mejor se ajuste a los datos históricos minimizando los errores cuadráticos (mínimos cuadrados ordinarios).
+
+En este estudio se ha utilizado una \textbf{regresión polinómica de grado 3 (cúbica)} con una única variable predictora: el número de días transcurridos desde el inicio del entrenamiento. La variable objetivo son los ingresos diarios agregados. Un polinomio cúbico permite que la curva cambie de dirección hasta dos veces, lo que en teoría deja margen para capturar una tendencia con aceleración y desaceleración a lo largo del año.
+
+\subsection{Configuración del entrenamiento}
+
+Se implementa con \texttt{PolynomialFeatures} (para generar las potencias $x$, $x^2$, $x^3$) junto con \texttt{LinearRegression} (ajuste por mínimos cuadrados). Sobre el dataset base (392.692 transacciones) se agrupan los ingresos por día para obtener la serie diaria, y las fechas se convierten en una variable numérica \texttt{Days} (número de días transcurridos desde el inicio del entrenamiento), dando al modelo un único predictor numérico.
+
+La división es train del 1-dic-2010 al 8-nov-2011 (107 días con actividad comercial) y test del 9-nov-2011 al 9-dic-2011 (10 días), sin conjunto de validación. El hiperparámetro único es \texttt{degree=3}, sin \textit{grid search} sobre distintos grados ni regularización (Ridge, Lasso). El modelo resultante tiene 4 coeficientes ajustados ($b_0 = 19066{,}28$; $b_1 = 1{,}79\cdot10^{2}$; $b_2 = -9{,}29\cdot10^{-1}$; $b_3 = 1{,}62\cdot10^{-3}$). La estrategia es intencionalmente mínima: establecer una línea base clásica basada únicamente en el paso del tiempo, para evaluar cuánto aporta un ajuste polinómico puro cuando la única variable predictora es el tiempo.
+
+\subsection{Predicciones y evaluación}
+
+Se evalúa con las cuatro métricas habituales sobre el conjunto de test, comparando con un \textit{baseline naive} que predice siempre la media de ventas del entrenamiento.
+
+\begin{table}[H]
+\centering
+\caption{Resultados Regresión Polinómica (grado 3) vs baseline}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Métrica} & \textbf{Polinómica} & \textbf{Baseline media} \\
+\midrule
+R$^2$ & $-0,4272$ & 0,0000 \\
+MAE (GBP) & 14.836,47 & 12.094,90 \\
+RMSE (GBP) & 17.057,96 & --- \\
+MAPE (\%) & 73,08 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+Se generan cuatro visualizaciones para diagnosticar el modelo. La \textbf{serie temporal completa} muestra el train, los valores reales del test y la predicción cúbica, separados por la línea de corte. El \textbf{ajuste polinómico sobre el train} evidencia que el polinomio captura una tendencia suave pero es incapaz de seguir la variabilidad diaria. El \textbf{scatter real vs predicción} forma una franja horizontal casi plana en torno a los 35.000--40.000 GBP, independientemente del valor real: el modelo devuelve un valor casi constante. Los \textbf{errores por día} muestran que la mayoría son negativos y grandes, confirmando la sobrestimación sistemática.
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+Los resultados son inequívocos: la regresión polinómica de grado 3 \textbf{no resulta adecuada} para este conjunto de datos. No solo obtiene métricas pobres en términos absolutos, sino que \textbf{empeora al baseline naive} (predecir la media), lo que significa que la complejidad adicional del polinomio introduce más ruido que señal.
+
+La causa principal es estructural. El modelo depende exclusivamente del tiempo transcurrido como predictor, sin información sobre día de la semana, mes, festivos o campañas. La serie presenta una variabilidad alta con patrones estacionales que no pueden capturarse con una curva polinómica suave: el polinomio promedia picos y valles que para el negocio son precisamente la información relevante. Además, los polinomios de grado $\geq 2$ tienen un comportamiento problemático en extrapolación: fuera del rango de entrenamiento la curva diverge según el signo del coeficiente del término de mayor grado (aquí el de $x^3$ es positivo, empujando las predicciones al alza sin base en datos reales). Su validez queda limitada a la de una \textbf{línea base muy simple}, útil para demostrar por comparación el valor que aportan los modelos con \textit{feature engineering}.
+
+\textbf{Limitaciones.} Modelo basado en una única variable (tiempo) sin información estacional ni operacional; extrapolación inestable propia de los polinomios de grado alto; incapacidad de capturar picos bruscos; sesgo sistemático de sobrestimación en test; sin regularización; rendimiento inferior al \textit{baseline naive}.
+
+\textbf{Beneficios.} Implementación mínima en \textit{scikit-learn}; interpretabilidad total (cuatro coeficientes con significado directo); entrenamiento instantáneo; sirve como referencia de suelo frente a la que contrastar modelos más complejos; diagnóstico matemático claro sobre por qué el enfoque falla.
+
+\section{Modelo Random Forest}
+
+\subsection{Descripción del modelo}
+
+Random Forest es un algoritmo supervisado de la familia de los métodos \textit{ensemble}. Su principio es que un conjunto de modelos débiles combinados produce una predicción más robusta y precisa que cualquier modelo individual. Construye un número determinado de árboles de decisión de forma paralela e independiente y obtiene la predicción final como el promedio de las predicciones de todos ellos. Cada árbol se entrena sobre una muestra distinta obtenida mediante \textit{bootstrap} (muestreo con reemplazamiento), y en cada nodo la búsqueda de la división óptima se realiza sobre un subconjunto aleatorio de variables. Este doble mecanismo de aleatoriedad (datos y variables) garantiza que los árboles sean suficientemente distintos como para que su promediado reduzca la varianza del modelo global. Sus parámetros principales son \texttt{min\_samples\_leaf}, \texttt{max\_features} y \texttt{bootstrap}.
+
+\subsection{Configuración del entrenamiento}
+
+El modelo predice las ventas diarias ($y_t$) a partir del estado conocido de la serie hasta $t-1$, usando las \textbf{mismas 23 features que XGBoost} (lags 1--30, medias y desviaciones móviles 3--14, features de calendario, diferencias temporales y métricas operacionales rezagadas). Todas aplican \texttt{shift(1)} como mínimo para evitar \textit{data leakage}. La variable objetivo se transforma con \texttt{log1p} y se revierte con \texttt{expm1} antes del cálculo de métricas; el pipeline idéntico al de XGBoost permite una comparación justa.
+
+La configuración utiliza \texttt{n\_estimators=500}, \texttt{max\_depth=14}, \texttt{min\_samples\_leaf=5}, \texttt{max\_features='sqrt'}, \texttt{oob\_score=True}, \texttt{bootstrap=True} y \texttt{random\_state=42}. El parámetro \texttt{min\_samples\_leaf=5} actúa como regularizador impidiendo que los árboles memoricen días atípicos; \texttt{max\_features='sqrt'} introduce diversidad al evaluar solo $\sqrt{23}$ variables por nodo; y \texttt{oob\_score} aporta una estimación de generalización sin consumir datos de test. Como estrategia de validación se usa \texttt{TimeSeriesSplit} con 5 divisiones (durante la validación cruzada se usan 300 árboles en lugar de 500 para reducir el tiempo de cómputo sin comprometer la validez comparativa).
+
+\subsection{Predicciones y evaluación}
+
+\begin{table}[h]
+\centering
+\caption{Resultados Random Forest vs baseline naive}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Métrica} & \textbf{Random Forest} & \textbf{Baseline} & \textbf{Mejora} \\
+\midrule
+R$^2$ & 0,1427 & $-0,1707$ & +183,6 \% \\
+MAE (GBP) & 13.082,78 & 20.174,50 & +35,2 \% \\
+RMSE (GBP) & 27.401,92 & 32.021,44 & +14,4 \% \\
+MAPE (\%) & 19,60 & 38,94 & +49,7 \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Random Forest supera al baseline en todas las métricas, validando que la complejidad adicional aporta mejora real. Sin embargo, el margen es inferior al de XGBoost con el mismo pipeline (RMSE 27.402 vs. 19.604; R$^2$ 0,14 vs. 0,56), lo que indica que el promediado de árboles no aprovecha con la misma intensidad las features construidas.
+
+\subsection{Análisis visual de los resultados}
+
+Se generan seis visualizaciones: serie temporal completa, scatter real vs predicción, importancia de features (donde \texttt{ventas\_lag\_1} y las medias móviles dominan), análisis de residuos, y diagnósticos adicionales. La predicción sigue la tendencia general pero \textbf{tiende a suavizar los picos}, comportamiento estructural del promediado.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figuras_regresion/rf_1_serie.png}
+\caption{Random Forest --- Serie temporal completa: histórico, real y predicciones en test.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{figuras_regresion/rf_2_correlacion.png}
+\caption{Random Forest --- Correlación real vs predicho con métricas de rendimiento.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/rf_3_importancia.png}
+\caption{Random Forest --- Top 15 features por importancia (reducción de impureza).}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/rf_4_residuos.png}
+\caption{Random Forest --- Análisis de residuos frente a valores predichos.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras_regresion/rf_5_distribucion.png}
+\caption{Random Forest --- Distribución de los residuos.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras_regresion/rf_6_metricas.png}
+\caption{Random Forest --- Resumen de métricas de rendimiento.}
+\end{figure}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+Random Forest cumple los requisitos mínimos de validez metodológica (sin \textit{data leakage}, \textit{split} temporal estricto, superación del \textit{baseline}), pero se descarta como modelo final por varias razones. Primero, el \textbf{suavizado estructural}: el promediado de árboles empuja las predicciones hacia la media histórica, produciendo una infraestimación sistemática de los picos de ventas, precisamente los días más críticos para la planificación operativa. Segundo, la \textbf{ausencia de corrección iterativa}: una vez construidos los árboles de forma independiente, el modelo no puede refinar la predicción sobre los casos difíciles, a diferencia de los algoritmos de \textit{boosting}. Tercero, el \textbf{rendimiento inferior frente a XGBoost} con el mismo pipeline (R$^2$ de 0,14 vs. 0,56; RMSE de 27.402 vs. 19.604 GBP). Cuarto, la ausencia de un parámetro equivalente al \texttt{learning\_rate}, que reduce la granularidad del control sobre el aprendizaje.
+
+El descarte no invalida el modelo: sus resultados sirven como referencia de alto rendimiento frente a la que contrastar alternativas, más sólida que el simple \textit{baseline naive}.
+
+\textbf{Limitaciones.} Incapacidad de extrapolar más allá del rango observado en entrenamiento; suavizado estructural de picos por promediado; coste computacional en inferencia (500 árboles de profundidad 14); sensibilidad al tamaño del conjunto de entrenamiento en los primeros \textit{folds}; ausencia de regularización explícita L1/L2; interpretabilidad limitada al ser promedio de 500 árboles.
+
+\textbf{Beneficios.} Robustez frente a \textit{outliers} gracias al promediado; sin necesidad de escalado de \textit{features}; estimación \textit{out-of-bag} gratuita; importancia de variables interpretable por reducción de impureza; estabilidad y reproducibilidad total con semilla fija; paralelización nativa; referencia sólida para comparar con modelos más complejos.
+
+\section{Modelo XGBoost}
+
+\subsection{Descripción del modelo}
+
+A diferencia del Random Forest, que construye árboles en paralelo e independientes, XGBoost (\textit{Extreme Gradient Boosting}) los construye de forma \textbf{secuencial}: cada nuevo árbol corrige los errores residuales del conjunto anterior, reduciendo progresivamente el error. El mecanismo central es el descenso por gradiente en el espacio funcional: en cada iteración se entrena un árbol que aproxima el gradiente negativo de la función de pérdida. La predicción final es la suma ponderada de todas las contribuciones, regulada por el \texttt{learning\_rate}.
+
+Sus aportaciones diferenciales respecto al \textit{gradient boosting} clásico son tres: regularización L1/L2 directamente en la función objetivo, búsqueda de divisiones basada en gradiente y hessiano (estadísticos de segundo orden), y paralelización a nivel de nodo dentro de cada árbol. Sus parámetros principales son \texttt{n\_estimators}, \texttt{max\_depth}, \texttt{learning\_rate}, \texttt{subsample}, \texttt{colsample\_bytree} y los términos de regularización \texttt{reg\_alpha} y \texttt{reg\_lambda}.
+
+\subsection{Configuración del entrenamiento}
+
+El modelo predice las ventas diarias ($y_t$) a partir del estado conocido de la serie hasta $t-1$. Se usa un pipeline idéntico al de Random Forest (mismas features, mismo \textit{split} temporal, misma transformación) para que cualquier diferencia sea atribuible al algoritmo. Se construyen \textbf{23 features} agrupadas en cinco bloques: lags de la variable objetivo (1, 2, 3, 7, 14, 30); medias y desviaciones móviles (3--14 días); features de calendario (día de la semana, mes, fin de semana, día del mes, inicio/final de mes); diferencias temporales (1d, 7d) y ratios vs. lags; y features operacionales rezagadas (\texttt{clientes\_lag\_1}, \texttt{facturas\_lag\_1}, \texttt{productos\_lag\_1}). Todas aplican \texttt{shift(1)} como mínimo para evitar \textit{data leakage}. La variable objetivo se transforma con \texttt{log1p} y se revierte con \texttt{expm1}.
+
+La configuración utiliza \texttt{n\_estimators=500}, \texttt{max\_depth=14}, \texttt{learning\_rate=0.05}, \texttt{subsample=0.8}, \texttt{colsample\_bytree=0.8}, \texttt{reg\_alpha=0}, \texttt{reg\_lambda=1} y \texttt{random\_state=42}. Un \texttt{learning\_rate} conservador de 0,05 con 500 iteraciones favorece un modelo suave y robusto; \texttt{subsample} y \texttt{colsample\_bytree} a 0,8 actúan como regularizadores. Como estrategia de validación se emplea \texttt{TimeSeriesSplit} con 5 divisiones respetando el orden cronológico (con 300 árboles durante la validación cruzada para reducir el cómputo).
+
+\subsection{Predicciones y evaluación}
+
+Se evalúa con cuatro métricas complementarias sobre el conjunto de test cronológico, comparando con un \textit{baseline naive} que predice $y_t = y_{t-1}$.
+
+\begin{table}[H]
+\centering
+\caption{Resultados XGBoost vs baseline naive}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Métrica} & \textbf{XGBoost} & \textbf{Baseline} & \textbf{Mejora} \\
+\midrule
+R$^2$ & 0,5612 & $-0,1707$ & +428,7 \% \\
+MAE (GBP) & 9.198,35 & 20.174,50 & +54,4 \% \\
+RMSE (GBP) & 19.604,36 & 32.021,44 & +38,8 \% \\
+MAPE (\%) & 14,67 & 38,94 & +62,3 \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El R$^2$ pasa de $-0,17$ (baseline) a \textbf{0,56} y el RMSE de 19.604 GBP supone una mejora sustancial: el enfoque de \textit{feature engineering} + \textit{boosting} captura patrones que los modelos univariantes clásicos no alcanzan. XGBoost obtiene el \textbf{mejor rendimiento entre todos los modelos evaluados}.
+
+\subsection{Análisis visual de los resultados}
+
+Se generan cinco visualizaciones con valores numéricos directos en cada gráfico. La \textbf{serie temporal completa} sitúa la predicción en el contexto del histórico con las métricas anotadas. Los \textbf{errores por día} muestran la evolución de $y - \hat{y}$ con bandas a $\pm1\sigma$, marcando como \textit{outliers} los que superan $\pm2\sigma$. La \textbf{importancia de features} por criterio de \textit{gain} confirma que los lags recientes (\texttt{ventas\_lag\_1}) y las medias móviles dominan, coherente con la naturaleza autocorrelacionada de la serie. El \textbf{scatter real vs predicción} evidencia que la mayor dispersión se concentra en los valores altos (los días de máxima actividad son los más difíciles de predecir). La \textbf{distribución de errores} diagnostica mediante \textit{skewness} y \textit{kurtosis} si los residuos se aproximan a una normal.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figuras_regresion/xgb_1_prediccion.png}
+\caption{XGBoost --- Serie temporal completa: histórico, real y predicciones en test (MAE 9.198, R$^2$ 0,561).}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/xgb_2_error.png}
+\caption{XGBoost --- Error de predicción por día en el periodo de test.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_regresion/xgb_3_importancia.png}
+\caption{XGBoost --- Top 15 features por importancia (\textit{gain}) con \% acumulado.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{figuras_regresion/xgb_4_scatter.png}
+\caption{XGBoost --- Dispersión real vs predicho sobre el conjunto de test.}
+\end{figure}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+XGBoost obtiene el mejor rendimiento entre todos los modelos evaluados en esta memoria y supera ampliamente al baseline naive en las cuatro métricas, lo que valida tanto el pipeline de \textit{feature engineering} como la potencia del algoritmo. La elección está respaldada por tres factores: la \textbf{calidad predictiva} (R$^2$ de 0,56 frente a 0,14 de Random Forest, RMSE un 28 \% mejor que el segundo clasificado), la robustez del pipeline, y la reproducibilidad (\texttt{TimeSeriesSplit} de 5 divisiones y semilla fija).
+
+Esto no significa que el modelo esté libre de puntos de mejora. La \textbf{sensibilidad a hiperparámetros} es alta y no se ha ejecutado un \textit{grid search} exhaustivo; la validación temporal muestra variabilidad entre \textit{folds} en los primeros cortes; y la \textbf{interpretabilidad individual} de cada predicción es limitada, ya que cada salida es la suma de cientos de correcciones secuenciales que solo se desgranan con herramientas como SHAP. Todos estos puntos son áreas de mejora futura, no razones para descartar el modelo.
+
+\textbf{Limitaciones.} Naturaleza secuencial del \textit{boosting} (no paralelizable entre árboles, aumenta el tiempo de entrenamiento); sensibilidad al ruido, ya que los árboles posteriores se especializan en corregir errores de los anteriores; incapacidad de extrapolar más allá del rango observado; mayor complejidad de ajuste por el amplio espacio de hiperparámetros; variabilidad entre \textit{folds}; dificultad de interpretación individual de cada predicción.
+
+\textbf{Beneficios.} Corrección iterativa que captura mejor los picos que el promediado de Random Forest; regularización explícita (L1+L2) y configurable; control fino del aprendizaje vía \texttt{learning\_rate}; mejor rendimiento sobre el \textit{baseline} que Random Forest; diagnóstico enriquecido con \textit{skewness} y \textit{kurtosis}; paralelización interna a nivel de nodo; referencia de alto rendimiento del proyecto.
+
+\section{Modelo LSTM}
+
+\subsection{Descripción del modelo}
+
+LSTM (\textit{Long Short-Term Memory}) es un tipo avanzado de Red Neuronal Recurrente (RNN) diseñada específicamente para procesar secuencias de datos temporales y aprender dependencias a largo plazo. Su elemento distintivo es la \textbf{celda de memoria}: un mecanismo con tres puertas (\textit{forget}, \textit{input}, \textit{output}) que permite a la red decidir en cada paso qué información del pasado conservar, cuál actualizar y cuál pasar a la siguiente capa. Esto resuelve el problema del desvanecimiento del gradiente de las RNN clásicas. En este estudio la LSTM se configura como predictor de un paso por delante: dada una ventana de los últimos 30 días de ventas, produce una estimación del día siguiente.
+
+\subsection{Configuración del entrenamiento}
+
+El modelo se implementa en TensorFlow/Keras. La serie diaria se construye agregando \texttt{importe\_linea} por fecha y rellenando con ceros los días sin transacciones, para mantener una cadencia temporal continua. Las ventas se normalizan al rango $[0,1]$ con \texttt{MinMaxScaler} (ajustado solo sobre train para evitar \textit{data leakage}). Se usa una ventana \texttt{LOOK\_BACK = 30}: cada muestra de entrada es una secuencia de 30 días consecutivos y el objetivo es el día 31.
+
+La arquitectura tiene dos capas LSTM apiladas con \textit{dropout} entre capas, seguidas de una cabeza densa, sumando \textbf{118.081 parámetros}:
+
+\begin{table}[h]
+\centering
+\caption{Arquitectura de la red LSTM (118.081 parámetros)}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Capa} & \textbf{Salida} & \textbf{Parámetros} \\
+\midrule
+LSTM (128 unidades, \texttt{return\_sequences=True}) & (30, 128) & 66.560 \\
+Dropout (0,2) & (30, 128) & 0 \\
+LSTM (64 unidades) & (64,) & 49.408 \\
+Dropout (0,2) & (64,) & 0 \\
+Dense (32 unidades, ReLU) & (32,) & 2.080 \\
+Dense (1 unidad, lineal) & (1,) & 33 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Hiperparámetros: optimizador Adam con \texttt{learning\_rate=1e-3}; pérdida MSE con MAE como métrica secundaria; \texttt{epochs=200}, \texttt{batch\_size=16}, \texttt{validation\_split=0,15}; semilla fija. Dos \textit{callbacks} controlan el entrenamiento: \texttt{EarlyStopping} con paciencia de 20 épocas y \texttt{ReduceLROnPlateau}. El entrenamiento se detuvo por \textit{early stopping} en la época 23, restaurando los pesos de la \textbf{época 3}. Que el mejor modelo sea tan temprano es una señal de alerta: sugiere que la red no aprende representaciones útiles más allá del patrón inicial.
+
+\subsection{Predicciones y evaluación}
+
+\begin{table}[h]
+\centering
+\caption{Resultados del modelo LSTM}
+\begin{tabular}{lr}
+\toprule
+\textbf{Conjunto} & \textbf{RMSE (GBP)} \\
+\midrule
+Test (9 nov -- 9 dic 2011) & 35.401 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+El análisis visual del LSTM confirma que la red tiende a generar predicciones próximas a un valor constante, sin capturar la variabilidad diaria de la serie. La serie completa muestra cómo la predicción se aplana en el periodo de test; el detalle del test evidencia el área de error acumulada; la dispersión real frente a predicho ilustra el R$^2$ negativo; y las curvas de pérdida muestran que la validación no mejora pese al descenso del error de entrenamiento, señal característica de un modelo que no generaliza por falta de datos.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figuras_regresion/lstm_1_serie.png}
+\caption{LSTM --- Serie temporal completa: train, test real y predicción.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figuras_regresion/lstm_2_test.png}
+\caption{LSTM --- Detalle del periodo de test con área de error.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.65\textwidth]{figuras_regresion/lstm_3_scatter.png}
+\caption{LSTM --- Dispersión real vs predicho (R$^2 = -0,186$).}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figuras_regresion/lstm_4_perdida.png}
+\caption{LSTM --- Curvas de pérdida (MSE y MAE) en train y validación.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{figuras_regresion/lstm_5_residuos.png}
+\caption{LSTM --- Residuos en el tiempo y distribución.}
+\end{figure}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+La LSTM \textbf{no resulta adecuada para este conjunto de datos}. El R$^2$ negativo y la predicción casi constante en torno a la media demuestran que la red no ha conseguido aprender ningún patrón temporal útil más allá del nivel medio de la serie. El comportamiento es estructuralmente similar al de ARIMA (predicción plana), pero con la complejidad añadida de 118.081 parámetros que no se traduce en mejora.
+
+La causa principal es el \textbf{tamaño del dataset}. Las arquitecturas LSTM suelen requerir miles de puntos temporales para generalizar bien, especialmente con estacionalidades anidadas. Con 343 días de entrenamiento y una única ventana anual, la red dispone de muy pocos ejemplos para que las puertas aprendan qué información temporal es relevante. Un segundo factor es la \textbf{volatilidad de la serie}: los picos de diciembre (el último día, 184.000 GBP) son más de cinco veces la media, y la red los trata como \textit{outliers} frente a los cuales resulta más seguro mantenerse cerca del valor central. Sin variables exógenas, la única señal disponible es la serie autocorrelacionada, insuficiente por sí sola para anticipar estos picos.
+
+La validez del modelo se limita a la de un \textbf{experimento comparativo}, útil para demostrar que la complejidad adicional del \textit{deep learning} no es suficiente cuando faltan datos y \textit{features}. En este proyecto, el rendimiento de LSTM queda por debajo de XGBoost y Random Forest, que con el mismo tamaño de serie explotan mejor las \textit{features} construidas manualmente. El análisis aporta además un aprendizaje valioso: delimita los requisitos mínimos (volumen de datos, regularización, variables exógenas) que habría que satisfacer para que una LSTM fuera competitiva en este dominio.
+
+
+\section{Comparativa de modelos y elección final}
+
+Tras evaluar los seis modelos bajo condiciones comparables, se presenta una síntesis que permite justificar la elección del modelo final. La métrica principal es el RMSE, acompañada de R$^2$ y MAE para detectar inconsistencias internas.
+
+\subsection{Tabla comparativa}
+
+\begin{table}[h]
+\centering
+\caption{Resultados de los seis modelos sobre el conjunto de test (9 nov -- 9 dic 2011)}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Modelo} & \textbf{RMSE (GBP)} & \textbf{R$^2$} & \textbf{MAE (GBP)} \\
+\midrule
+\textbf{XGBoost} & \textbf{19.604} & \textbf{+0,56} & \textbf{9.198} \\
+Random Forest & 27.402 & +0,14 & 13.083 \\
+ARIMA(1,1,1) & 31.688 & --- & --- \\
+LSTM & 35.401 & $-0,19$ & 24.007 \\
+Prophet & 35.789 & --- & --- \\
+Regresión Polinómica$^{*}$ & 17.058 & $-0,43$ & 14.836 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent {\small $^{*}$ El RMSE de la Regresión Polinómica (17.058) es aparentemente el más bajo, pero sus métricas son internamente incoherentes: un R$^2$ fuertemente negativo ($-0,43$) y un MAE superior al del baseline naive indican que el modelo es peor que predecir la media histórica. Además, su partición train/test es distinta a la del resto (107/10 días frente a 251/27), por lo que el RMSE no es directamente comparable. Por ambas razones, no entra en el ranking competitivo.}
+
+\subsection{Análisis del ranking}
+
+\textbf{XGBoost gana en las tres métricas simultáneamente.} Su RMSE de 19.604 GBP es un 28 \% mejor que el del segundo clasificado (Random Forest, 27.402) y un 45 \% mejor que Prophet y ARIMA. Es el único modelo con un R$^2$ claramente positivo y alto (+0,56), lo que significa que explica el 56 \% de la varianza de las ventas diarias. El MAE de 9.198 GBP es casi la mitad que el de Random Forest.
+
+\textbf{Random Forest} queda en segundo lugar con un pipeline idéntico al de XGBoost, lo que permite aislar el efecto del algoritmo: el \textit{boosting} secuencial aprovecha las 23 features mucho mejor que el promediado paralelo de árboles.
+
+\textbf{ARIMA y Prophet} comparten una limitación estructural: son modelos univariantes que solo disponen de los valores pasados de la serie. No pueden incorporar lags específicos, variables operacionales ni features de calendario explícitas sin una reconfiguración sustancial.
+
+\textbf{LSTM} obtiene el peor rendimiento entre los modelos cuantificables (R$^2$ negativo, $-0,19$). La red colapsa a predicciones casi constantes: con solo $\sim$343 días de train y un único ciclo anual, una arquitectura de más de 118.000 parámetros no dispone de datos suficientes para generalizar.
+
+\subsection{Modelo final: XGBoost}
+
+Se selecciona \textbf{XGBoost} como modelo final. La elección se sustenta en su superioridad en las tres métricas, en un pipeline de \textit{feature engineering} de 23 variables construidas manualmente, y en una validación temporal robusta. Los puntos de mejora identificados (sensibilidad a hiperparámetros, interpretabilidad limitada) son áreas de trabajo futuro, no motivos de descarte.
+
+\subsection{Conclusión}
+
+El proyecto cumple el objetivo planteado: disponer de un sistema capaz de predecir las ventas diarias entre el 9 de noviembre y el 9 de diciembre de 2011 a partir de los datos del año anterior. XGBoost, con 23 features construidas manualmente y un RMSE de 19.604 GBP, es el modelo que mejor captura la dinámica de la serie y el que se recomienda para una hipotética puesta en producción.
+
+La comparativa entre modelos aporta \textit{insights} más allá del propio ranking. Los modelos univariantes clásicos (ARIMA, Prophet) quedan limitados por no poder incorporar variables exógenas; los modelos basados en árboles (Random Forest, XGBoost) demuestran que el \textit{feature engineering} manual es la palanca principal cuando el dataset es pequeño; y LSTM confirma que las arquitecturas de \textit{deep learning} requieren volúmenes de datos que no están disponibles en este dominio concreto.
+
+Como líneas de mejora futura, el modelo podría beneficiarse de: (i) un \textit{grid search} sistemático sobre los hiperparámetros; (ii) la incorporación de un calendario de festivos por país como variable exógena; (iii) un estudio de interpretabilidad con SHAP; y (iv) la adopción de un esquema de reentrenamiento periódico, modo natural en que se usa la predicción de ventas en producción.
+
+
+\newpage
+% #############################################################################
+% PARTE II — CLUSTERING
+% #############################################################################
+\part*{\textcolor{azultfm}{Parte II — Clustering: segmentación de clientes}}
+\addcontentsline{toc}{section}{\textbf{PARTE II — CLUSTERING}}
+\vspace{0.5cm}
+
+\section*{\textcolor{tealtfm}{Bloque A — Preprocesado común de clustering}}
+\addcontentsline{toc}{subsection}{Bloque A — Preprocesado común de clustering}
+\addcontentsline{toc}{section}{Parte I — Preprocesado de datos}
+
+\section{Introducción y contexto}
+
+El objetivo de este proyecto es segmentar a los clientes de una tienda de \textit{e-commerce} del Reino Unido. Se utiliza el mismo dataset que en el proyecto de regresión (\textit{E-Commerce Data}, Kaggle / UCI), que recoge las transacciones realizadas entre diciembre de 2010 y diciembre de 2011. A diferencia del proyecto anterior, aquí no hay variable objetivo: el aprendizaje es no supervisado y se utiliza el dataset completo, sin separación en \textit{train} / \textit{test}.
+
+La estrategia de preprocesado parte de la \textbf{limpieza realizada en la fase anterior}, pero da un paso más: convierte el dataset transaccional en un dataset \textbf{centrado en clientes}, donde cada fila representa a un único usuario con un conjunto de variables agregadas que describen su comportamiento de compra. Este nuevo dataset es el punto de partida del proceso descrito en esta parte.
+
+Sobre el dataset de usuarios se aplica un preprocesado adicional: detección de \textit{outliers}, codificación de variables categóricas, escalado y reducción de dimensionalidad. La limpieza de \textit{outliers} se realiza sobre el dataset centrado en usuarios, una vez agregadas las transacciones por cliente.
+
+\section{Carga del dataset centrado en clientes}
+
+El \textit{script} de limpieza desarrollado en la fase anterior parte del dataset transaccional original, aplica los filtros de la primera entrega (eliminación de duplicados, notas de crédito, filas sin \texttt{id\_cliente} y precios no válidos) y construye un nuevo dataset a nivel de cliente. Este último paso es el más relevante para el proyecto de \textit{clustering}: se itera sobre cada cliente único y se calculan sus variables agregadas a partir de todas sus transacciones.
+
+\begin{lstlisting}
+# Generación del dataset centrado en clientes
+clientes_vars = []
+for cliente_id in df["id_cliente"].unique():
+    cliente_data = df[df["id_cliente"] == cliente_id].copy()
+
+    variables_cliente = {
+        "id_cliente": cliente_id,
+        "total_compras": len(cliente_data),
+        "total_productos_diferentes": cliente_data["codigo_producto"].nunique(),
+        "valor_total_compras": cliente_data["importe_linea"].sum(),
+        "valor_medio_por_compra": cliente_data["importe_linea"].mean(),
+        "dias_como_cliente": (cliente_data["fecha"].max()
+                              - cliente_data["fecha"].min()).days + 1,
+        "pais_principal": cliente_data["pais"].mode().iloc[0],
+        # ... (resto de variables agregadas)
+    }
+    clientes_vars.append(variables_cliente)
+
+df_clientes = pd.DataFrame(clientes_vars)
+\end{lstlisting}
+
+\noindent Por cada usuario único se calculan así 30 variables agrupadas en bloques temáticos:
+
+\begin{itemize}
+    \item \textbf{Volumen de compras}: \texttt{total\_compras}, \texttt{total\_productos\_diferentes}, \texttt{total\_facturas}.
+    \item \textbf{Valor monetario}: \texttt{valor\_total\_compras}, \texttt{valor\_medio\_por\_compra}, \texttt{valor\_mediano\_por\_compra}, \texttt{precio\_unitario\_medio}.
+    \item \textbf{Cantidad}: \texttt{cantidad\_total\_productos}, \texttt{cantidad\_media\_por\_compra}.
+    \item \textbf{Temporales}: \texttt{primer\_compra}, \texttt{ultima\_compra}, \texttt{dias\_como\_cliente}.
+    \item \textbf{Frecuencia y comportamiento}: \texttt{dia\_semana\_favorito}, \texttt{hora\_favorita}, \texttt{frecuencia\_compra}, \texttt{tiempo\_medio\_entre\_compras}, \texttt{tiempo\_mediano\_entre\_compras}.
+    \item \textbf{Geográficas}: \texttt{pais\_principal}, \texttt{paises\_diferentes}.
+    \item \textbf{Comportamiento semanal}: \texttt{compras\_fines\_semana}, \texttt{porcentaje\_compras\_fines\_semana}.
+    \item \textbf{Estacionalidad}: \texttt{mes\_mas\_activo}, \texttt{meses\_diferentes\_compra}, \texttt{meses\_activo}.
+    \item \textbf{Diversidad de productos}: \texttt{categorias\_productos\_diferentes}, \texttt{categoria\_favorita}, \texttt{diversidad\_categorias}.
+    \item \textbf{Mensuales}: \texttt{valor\_mensual\_medio}, \texttt{compras\_mensuales\_medias}.
+\end{itemize}
+
+\subsection*{Justificación del \textit{feature engineering}: el marco RFM}
+
+La construcción de estas variables no es arbitraria, sino que responde a un marco ampliamente aceptado en analítica de clientes: el modelo \textbf{RFM} (\textit{Recency, Frequency, Monetary}), que sintetiza el comportamiento de un cliente en tres dimensiones fundamentales. La elección de variables del dataset puede entenderse como una operacionalización ampliada de este marco:
+
+\begin{itemize}
+    \item \textbf{Recencia} (¿hace cuánto compró por última vez?): se captura mediante \texttt{ultima\_compra} y \texttt{dias\_como\_cliente}. La recencia es el predictor individual más potente del valor futuro de un cliente, ya que un cliente que ha comprado recientemente tiene mucha mayor probabilidad de volver a hacerlo.
+    \item \textbf{Frecuencia} (¿con qué regularidad compra?): se captura mediante \texttt{total\_compras}, \texttt{total\_facturas}, \texttt{frecuencia\_compra} y \texttt{tiempo\_medio\_entre\_compras}. Distingue a los clientes habituales de los esporádicos.
+    \item \textbf{Valor monetario} (¿cuánto gasta?): se captura mediante \texttt{valor\_total\_compras}, \texttt{valor\_medio\_por\_compra} y \texttt{valor\_mensual\_medio}. Identifica a los clientes de alto valor.
+\end{itemize}
+
+Sobre este núcleo RFM se añaden tres familias de variables complementarias que enriquecen el perfil de cada cliente más allá del modelo clásico: variables de \textbf{comportamiento temporal} (\texttt{porcentaje\_compras\_fines\_semana}, \texttt{dia\_semana\_favorito}, \texttt{hora\_favorita}), que resultaron decisivas para diferenciar perfiles de compra B2B y B2C; variables de \textbf{diversidad de producto} (\texttt{categorias\_productos\_diferentes}, \texttt{diversidad\_categorias}), que distinguen al comprador especializado del generalista; y variables \textbf{geográficas} (\texttt{pais\_principal}, \texttt{paises\_diferentes}). Esta combinación de un núcleo RFM sólido con variables de comportamiento es la que permite que el \textit{clustering} encuentre una segmentación interpretable y accionable, y no una agrupación puramente estadística sin lectura de negocio.
+
+Una variable que merece especial atención es \texttt{categoria\_favorita}, ya que el dataset original no incluye una categorización explícita de los productos. Para generarla, el \textit{script} de limpieza clasifica cada transacción en una categoría temática a partir de palabras clave en la descripción del producto:
+
+\begin{lstlisting}
+def categorizar_producto(descripcion):
+    desc_lower = str(descripcion).lower()
+    if any(word in desc_lower for word in ["christmas", "xmas", "santa"]):
+        return "navidad"
+    elif any(word in desc_lower for word in ["heart", "love", "valentine"]):
+        return "romantico"
+    elif any(word in desc_lower for word in ["baby", "bab", "child"]):
+        return "bebe"
+    elif any(word in desc_lower for word in ["birthday", "cake", "party"]):
+        return "cumpleanos"
+    elif any(word in desc_lower for word in ["postage", "carriage", "manual"]):
+        return "no_producto"
+    else:
+        return "otros"
+\end{lstlisting}
+
+\noindent Esta clasificación es relevante para el proyecto porque introduce una de las pocas variables categóricas del dataset, que más adelante se codificará mediante \textit{One-Hot}.
+
+El dataset resultante se carga directamente desde el archivo exportado por el \textit{script} de limpieza:
+
+\begin{lstlisting}
+RUTA_CSV = "dataset_clientes_clustering.csv"
+df = pd.read_csv(RUTA_CSV)
+print(f"Dataset cargado: {df.shape[0]} clientes, {df.shape[1]} variables")
+\end{lstlisting}
+
+\noindent$\rightarrow$ Estado inicial del dataset de clientes: \textbf{4.339 clientes} y \textbf{30 variables}.
+
+
+\section{Resumen del preprocesado común}
+
+La fase de preprocesado común al grupo deja como resultado el dataset \texttt{dataset\_clientes\_clustering.csv}, con las siguientes características:
+
+\begin{itemize}
+    \item \textbf{Filas (clientes)}: 4.339 clientes únicos, agregados a partir de las transacciones del dataset original.
+    \item \textbf{Columnas}: 30 variables que cubren volumen de compras, valor monetario, comportamiento temporal, geografía y diversidad de productos.
+    \item \textbf{Variables categóricas}: \texttt{pais\_principal} y \texttt{categoria\_favorita}.
+    \item \textbf{Variables numéricas}: las 28 restantes.
+\end{itemize}
+
+Este dataset es el punto de partida común para los tres modelos de \textit{clustering} descritos en la Parte II (Jerárquico, K-Means y DBSCAN). Cada modelo aplicará a continuación su propio preprocesado específico, en función de las particularidades del algoritmo y de las variables que mejor exploten su lógica interna.
+
+% =============================================================================
+\section*{\textcolor{tealtfm}{Bloque B — Modelos de clustering}}
+\addcontentsline{toc}{subsection}{Bloque B — Modelos de clustering}
+\addcontentsline{toc}{section}{Parte II — Modelos de clustering}
+
+\section{Planteamiento}
+
+A diferencia del proyecto de regresión, este es un problema de aprendizaje \textbf{no supervisado}: no existe variable objetivo y no es posible separar el dataset en \textit{train} y \textit{test}. Todo el dataset preprocesado se utiliza para entrenar cada modelo. La evaluación se basa en métricas internas de calidad del \textit{clustering} y, sobre todo, en la \textbf{interpretabilidad de los grupos obtenidos}, que es el criterio de éxito real desde el punto de vista de negocio.
+
+En esta parte se documentan cuatro modelos de \textit{clustering}, cada uno con su propio preprocesado específico aplicado sobre el dataset común generado en la Parte I:
+
+\begin{itemize}
+    \item \textbf{K-Means} (Sección~\ref{sec:kmeans}): algoritmo basado en centroides con un número de \textit{clusters} fijado a priori.
+    \item \textbf{Clustering Jerárquico} (Sección~\ref{sec:jerarquico}): algoritmo aglomerativo basado en un dendrograma de fusiones sucesivas.
+    \item \textbf{DBSCAN} (Sección~\ref{sec:dbscan}): algoritmo basado en densidad, capaz de detectar \textit{clusters} de forma arbitraria y de identificar puntos atípicos.
+    \item \textbf{HDBSCAN} (Sección~\ref{sec:hdbscan}): variante jerárquica de DBSCAN que detecta automáticamente \textit{clusters} de densidades variables.
+\end{itemize}
+
+Las métricas utilizadas son fundamentalmente tres: el \textbf{índice de silueta} (rango $[-1, 1]$, mayor mejor), el \textbf{índice de Davies-Bouldin} (rango $[0, \infty)$, menor mejor) y el \textbf{índice de Calinski-Harabasz} (mayor mejor). Algunos modelos incorporan métricas adicionales (porcentaje de ruido, equilibrio de \textit{clusters}) cuando son relevantes para su lógica interna. Adicionalmente se inspeccionan los tamaños de los \textit{clusters}, ya que una segmentación con un grupo que concentre la práctica totalidad de los clientes no aporta valor de negocio, por mucho que sus métricas sean buenas.
+
+\section{Modelo K-Means}
+\label{sec:kmeans}
+
+\subsection{Preprocesado específico para K-Means}
+
+Sobre el dataset común generado en la Parte I (4.339 clientes, 30 variables) se aplica un preprocesado específico para adaptarlo a las particularidades del algoritmo K-Means, que es sensible a valores atípicos y depende fuertemente del escalado de variables. Los pasos son: transformación logarítmica, imputación de valores faltantes, escalado y codificación, eliminación de \textit{outliers}, y reducción de dimensionalidad mediante PCA.
+
+\subsubsection{Transformación logarítmica}
+
+Muchas variables numéricas presentan distribuciones muy asimétricas con valores extremos elevados. Para reducir esta asimetría se aplica una transformación $x' = \log(1+x)$ a las principales variables de comportamiento (compras, valor, cantidad, frecuencia, recencia). Esta transformación reduce el impacto de clientes extremadamente grandes y mejora la estabilidad del clustering.
+
+\subsubsection{Imputación, escalado y codificación}
+
+Las variables numéricas se escalan con \texttt{RobustScaler}, menos sensible a valores extremos que \texttt{StandardScaler}, lo que es esencial porque K-Means utiliza distancias euclidianas. Las variables categóricas (\texttt{pais\_principal}, \texttt{categoria\_favorita}, \texttt{dia\_semana\_favorito}, \texttt{hora\_favorita}) se transforman mediante \texttt{OneHotEncoder}.
+
+\begin{lstlisting}
+preprocesador = ColumnTransformer([
+    ("num", RobustScaler(), columnas_numericas),
+    ("cat", OneHotEncoder(handle_unknown="ignore"), columnas_categoricas),
+])
+
+X = preprocesador.fit_transform(df)
+\end{lstlisting}
+
+\subsubsection{Reducción de dimensionalidad mediante PCA}
+
+Tras el escalado y codificación se aplica PCA con \textbf{10 componentes principales}, que conservan el \textbf{91,8\,\% de la varianza} total del dataset. Esta reducción cumple un doble papel: por un lado, elimina la redundancia entre variables y mejora la separabilidad de los \textit{clusters} en el espacio reducido; por otro, hace que la posterior detección de \textit{outliers} y el clustering operen sobre un espacio compacto y más informativo.
+
+\begin{lstlisting}
+pca = PCA(n_components=10, random_state=42)
+X_pca = pca.fit_transform(X.toarray() if hasattr(X, "toarray") else X)
+\end{lstlisting}
+
+\subsubsection{Eliminación de outliers con LOF}
+
+Sobre el espacio PCA reducido se aplica \textit{Local Outlier Factor} (LOF), un detector de anomalías basado en densidad local. Compara la densidad de cada punto con la de sus vecinos más cercanos y marca como atípicos aquellos cuya densidad local es notablemente menor. Se configura con \texttt{n\_neighbors=20} y \texttt{contamination=0.03} (3\,\% de los clientes esperados como atípicos).
+
+\begin{lstlisting}
+from sklearn.neighbors import LocalOutlierFactor
+
+lof = LocalOutlierFactor(n_neighbors=20, contamination=0.03)
+labels_lof = lof.fit_predict(X_pca)
+mask = labels_lof == 1
+X_modelo = X_pca[mask]
+df_modelo = df[mask].copy()
+\end{lstlisting}
+
+\noindent$\rightarrow$ Tras la eliminación de \textit{outliers}, el dataset queda con \textbf{4.208 clientes} (un 3\,\% eliminado del dataset original de 4.339), igualmente listos para el \textit{clustering} sobre el espacio PCA de 10 dimensiones.
+
+\subsection{Descripción del modelo}
+
+K-Means es un algoritmo de aprendizaje no supervisado utilizado para realizar tareas de \textit{clustering} o segmentación de datos. Su objetivo principal es dividir un conjunto de observaciones en un número determinado de grupos (\textit{clusters}), de forma que los elementos dentro de cada grupo sean lo más similares posible entre sí y lo más diferentes posible respecto a los elementos de otros grupos.
+
+El algoritmo funciona mediante un proceso iterativo basado en distancias. Inicialmente selecciona de manera aleatoria un conjunto de centroides, uno por cada \textit{cluster} definido. Posteriormente, cada punto del dataset se asigna al centroide más cercano utilizando normalmente la distancia euclidiana. Una vez asignados todos los puntos, el algoritmo recalcula los centroides como la media de todos los puntos pertenecientes a cada \textit{cluster}. Este proceso se repite hasta alcanzar la convergencia, es decir, hasta que las asignaciones dejan de cambiar o las variaciones son mínimas.
+
+K-Means es uno de los algoritmos de \textit{clustering} más utilizados debido a su simplicidad, rapidez y facilidad de interpretación. Sin embargo, presenta algunas limitaciones importantes: requiere definir previamente el número de \textit{clusters} $k$, es sensible a los valores atípicos y asume que los grupos tienen una forma aproximadamente esférica y tamaños similares.
+
+En este proyecto, el algoritmo se complementa con un proceso previo de detección y eliminación de \textit{outliers} mediante \textit{Local Outlier Factor} (LOF), reduciendo así el impacto negativo de clientes extremadamente atípicos sobre los centroides y mejorando la estabilidad de la segmentación.
+
+\subsubsection{Qué hace en este proyecto}
+
+K-Means se aplica a la segmentación de clientes con el objetivo de identificar grupos homogéneos de comportamiento que permitan personalizar estrategias de \textit{marketing}, promociones y acciones comerciales. El \textit{pipeline} realiza varias etapas consecutivas:
+
+\begin{itemize}
+    \item Preparación y transformación de variables (transformación logarítmica de variables asimétricas).
+    \item Escalado de variables numéricas y codificación de categóricas.
+    \item Reducción de dimensionalidad mediante PCA de 10 componentes para mejorar la estabilidad del \textit{clustering} y reducir el ruido dimensional.
+    \item Detección y eliminación de \textit{outliers} mediante LOF.
+    \item Búsqueda automática del número óptimo de \textit{clusters} usando métricas internas de calidad.
+    \item Entrenamiento del modelo final K-Means.
+    \item Reducción de dimensionalidad a 2 componentes exclusivamente para visualización gráfica.
+    \item Generación de métricas, visualizaciones y resúmenes estadísticos de cada segmento.
+    \item Exportación de los resultados a un fichero CSV para su integración en herramientas de CRM o \textit{marketing}.
+\end{itemize}
+
+\subsubsection{Variables del modelo}
+
+El modelo utiliza variables tanto numéricas como categóricas relacionadas con el comportamiento de compra del cliente.
+
+\paragraph{Variables numéricas (transformadas con $\log(1+x)$ las indicadas):}
+\begin{itemize}
+    \item \texttt{total\_compras\_log}, \texttt{total\_productos\_diferentes\_log}, \texttt{total\_facturas\_log}: volumen y diversidad de la actividad.
+    \item \texttt{valor\_total\_compras\_log}, \texttt{valor\_medio\_por\_compra\_log}, \texttt{precio\_unitario\_medio\_log}: comportamiento monetario.
+    \item \texttt{cantidad\_total\_productos\_log}, \texttt{cantidad\_media\_por\_compra\_log}: volumen físico de productos.
+    \item \texttt{dias\_como\_cliente\_log}, \texttt{recencia\_dias\_log}: antigüedad y recencia.
+    \item \texttt{paises\_diferentes}, \texttt{categorias\_productos\_diferentes}, \texttt{diversidad\_categorias}: diversidad geográfica y de productos.
+    \item \texttt{compras\_fines\_semana\_log}, \texttt{porcentaje\_compras\_fines\_semana}: patrón temporal semanal.
+    \item \texttt{mes\_mas\_activo}, \texttt{meses\_diferentes\_compra}, \texttt{meses\_activo\_log}: patrones estacionales.
+    \item \texttt{tiempo\_medio\_entre\_compras\_log}, \texttt{frecuencia\_compra\_log}: cadencia de compra.
+    \item \texttt{valor\_mensual\_medio\_log}, \texttt{compras\_mensuales\_medias\_log}: actividad mensual.
+\end{itemize}
+
+\paragraph{Variables categóricas (codificadas con \textit{One-Hot Encoding}):}
+\begin{itemize}
+    \item \texttt{pais\_principal}: país principal del cliente.
+    \item \texttt{categoria\_favorita}: categoría de producto más comprada.
+    \item \texttt{dia\_semana\_favorito}: día habitual de compra.
+    \item \texttt{hora\_favorita}: franja horaria más frecuente de compra.
+\end{itemize}
+
+\subsection{Configuración del entrenamiento}
+
+Se utiliza la implementación \texttt{KMeans} de \textit{scikit-learn} con \texttt{n\_init=30} durante la búsqueda y \texttt{n\_init=50} en el modelo final, lo que reduce la probabilidad de converger a mínimos locales subóptimos. La estrategia de selección del $k$ óptimo consiste en entrenar el modelo para $k \in \{2, 3, 4, 5, 6, 7, 8, 9\}$ y evaluar cada configuración mediante el \textbf{índice de silueta} como métrica principal, complementado con análisis visual del \textbf{índice de Calinski-Harabasz} y el \textbf{índice de Davies-Bouldin}.
+
+\begin{lstlisting}
+resultados = []
+for k in range(2, 10):
+    modelo = KMeans(n_clusters=k, random_state=42, n_init=30)
+    etiquetas = modelo.fit_predict(X_modelo)
+    sil = silhouette_score(X_modelo, etiquetas)
+    resultados.append((k, sil))
+
+mejor_k = sorted(resultados, key=lambda x: x[1], reverse=True)[0][0]
+\end{lstlisting}
+
+\subsection{Búsqueda del número óptimo de clusters}
+
+La Figura~\ref{fig:kmeans_metricas} muestra la evolución de las tres métricas en función de $k$. La silueta presenta un máximo claro en $k=2$ (0,5257) con una caída pronunciada a 0,2627 en $k=3$. Los índices complementarios refuerzan esta elección: Calinski-Harabasz alcanza su máximo en $k=2$ y desciende monótonamente a partir de ahí, mientras que Davies-Bouldin presenta su mínimo en $k=2$ y empeora con valores mayores. Los tres indicadores convergen en señalar $k=2$ como configuración óptima.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/kmeans/metricas_k_v2.jpeg}
+\caption{Evolución de las tres métricas internas en función del número de \textit{clusters} $k$: silueta (mayor mejor), Calinski-Harabasz (mayor mejor) y Davies-Bouldin (menor mejor).}
+\label{fig:kmeans_metricas}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Índice de silueta para distintos valores de $k$}
+\label{tab:kmeans_busqueda_k}
+\begin{tabular}{rr}
+\toprule
+\textbf{$k$} & \textbf{Silueta} \\
+\midrule
+2 & \textbf{0,5257} \\
+3 & 0,2627 \\
+4 & 0,2587 \\
+5 & 0,2446 \\
+6 & 0,2151 \\
+7 & 0,2003 \\
+8 & 0,1989 \\
+9 & 0,1909 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Modelo final}
+
+La configuración seleccionada es \texttt{KMeans(n\_clusters=2, n\_init=50, random\_state=42)} entrenada sobre el dataset preprocesado de 4.208 clientes en el espacio PCA de 10 dimensiones. Los tamaños de los dos \textit{clusters} resultantes son 3.673 y 535 clientes (Figura~\ref{fig:kmeans_tamano}). El Cuadro~\ref{tab:kmeans_resumen} resume las métricas finales.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras_clustering/kmeans/tamano_clusters_v2.jpeg}
+\caption{Distribución del número de clientes por \textit{cluster}.}
+\label{fig:kmeans_tamano}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Resumen del modelo K-Means final}
+\label{tab:kmeans_resumen}
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica / parámetro} & \textbf{Valor} \\
+\midrule
+Algoritmo & \texttt{KMeans} \\
+$k$ (número de \textit{clusters}) & 2 \\
+\texttt{n\_init} & 50 \\
+\texttt{random\_state} & 42 \\
+Componentes PCA & 10 (91,8\,\% varianza) \\
+Clientes utilizados & 4.208 \\
+Silueta & 0,5257 \\
+Tamaño \textit{cluster} 0 & 3.673 (87,3\,\%) \\
+Tamaño \textit{cluster} 1 & 535 (12,7\,\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+La Figura~\ref{fig:kmeans_pca} muestra los \textit{clusters} proyectados en el espacio PCA 2D. Se aprecia una separación nítida entre el \textit{cluster} 0 (mayoritario, en azul, concentrado en la zona izquierda del eje PC1) y el \textit{cluster} 1 (minoritario, en naranja, distribuido hacia valores altos de PC1). La separación es coherente con el valor de silueta obtenido (0,5257).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/kmeans/pca_2d_v2.jpeg}
+\caption{Clientes proyectados sobre las dos primeras componentes principales, coloreados por \textit{cluster}.}
+\label{fig:kmeans_pca}
+\end{figure}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Silueta sólida}: 0,5257, dentro del rango ``buena estructura'' (>0,5), con una caída pronunciada y limpia entre $k=2$ y $k=3$ (de 0,5257 a 0,2627) que confirma la elección.
+    \item \textbf{Convergencia entre criterios}: las tres métricas internas (silueta, Calinski-Harabasz y Davies-Bouldin) señalan de forma unánime $k=2$ como configuración óptima.
+    \item \textbf{Preprocesado robusto}: la combinación de PCA (10 componentes, 91,8\,\% de varianza) y \textit{LOF} sobre el espacio reducido produce una representación compacta del comportamiento de compra y elimina anomalías locales antes del \textit{clustering}.
+    \item \textbf{Interpretabilidad de negocio}: la naturaleza basada en centroides permite caracterizar cada \textit{cluster} con un punto representativo, facilitando que los resultados sean comprendidos tanto por perfiles técnicos como por responsables de \textit{marketing}.
+    \item \textbf{Aplicabilidad directa en CRM}: la asignación de cada cliente a un segmento concreto se exporta a CSV y es directamente integrable con plataformas de automatización comercial.
+    \item \textbf{Rapidez y estabilidad}: el algoritmo es eficiente incluso en datasets grandes y el uso de \texttt{n\_init=50} reduce la dependencia de la inicialización aleatoria.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Necesidad de fijar $k$ a priori}: aunque la búsqueda automática mitiga este problema, obliga a realizar procesos de validación adicionales para seleccionar el valor óptimo.
+    \item \textbf{Asunción de clusters esféricos}: K-Means funciona mejor con grupos de forma aproximadamente convexa y tamaños similares; en este caso los tamaños son desbalanceados (87,3\,\% / 12,7\,\%).
+    \item \textbf{Pérdida de interpretabilidad directa por PCA}: la reducción de dimensionalidad mejora la estabilidad del modelo, pero hace que el \textit{clustering} se realice sobre componentes transformados y no sobre las variables originales, lo que dificulta atribuir un \textit{cluster} a una variable concreta sin un análisis adicional.
+    \item \textbf{Sensibilidad a valores extremos}: aunque la transformación logarítmica y la eliminación de \textit{outliers} mediante LOF mitigan este problema, el algoritmo sigue siendo sensible a valores atípicos residuales.
+    \item \textbf{Dependencia del escalado}: cualquier diferencia de escala entre variables se traduce directamente en mayor peso en el cálculo de distancias.
+    \item \textbf{Sin detección de anomalías propia}: a diferencia de los modelos basados en densidad, K-Means asigna obligatoriamente cada cliente a un \textit{cluster}, por lo que la identificación de \textit{outliers} debe hacerse en una etapa previa.
+    \item \textbf{Pequeñas variaciones en los datos pueden modificar centroides}: como ocurre en cualquier algoritmo de \textit{clustering}, los resultados deben interpretarse como una aproximación útil para segmentación comercial y no como categorías absolutas e inmutables.
+\end{itemize}
+
+\section{Modelo Clustering Jerárquico}
+\label{sec:jerarquico}
+
+\subsection{Preprocesado específico para clustering jerárquico}
+
+Sobre el dataset común generado en la Parte I (4.339 clientes, 30 variables) se aplica un preprocesado específico para adaptarlo al algoritmo jerárquico, que se basa en distancias entre puntos. Los pasos son: detección y eliminación de \textit{outliers}, codificación de variables categóricas, escalado y reducción de dimensionalidad mediante PCA.
+
+\subsubsection{Detección y eliminación de outliers}
+
+Una inspección preliminar revela la presencia de clientes ``ballena'': un cliente con \texttt{valor\_total\_compras} superior a 77.000 GBP (frente a una mediana en torno a los 660 GBP) y otros con cantidades de producto desproporcionadas respecto al resto. Estos casos extremos distorsionan el espacio de características y se aplica una estrategia en dos pasos:
+
+\begin{itemize}
+    \item \textbf{Paso 1 — Recorte por percentil 99} en variables monetarias y de cantidad (\texttt{valor\_total\_compras}, \texttt{cantidad\_total\_productos}, \texttt{total\_compras}, \texttt{valor\_medio\_por\_compra}, \texttt{valor\_mensual\_medio}, \texttt{compras\_mensuales\_medias} y \texttt{cantidad\_media\_por\_compra}). Elimina 161 clientes (3,71\,\%).
+    \item \textbf{Paso 2 — Isolation Forest} sobre el dataset ya recortado, configurado con \texttt{contamination=0.05} y \texttt{n\_estimators=200}. Detecta 209 \textit{outliers} multivariantes adicionales (5\,\%).
+\end{itemize}
+
+\begin{lstlisting}
+from sklearn.ensemble import IsolationForest
+
+iso_forest = IsolationForest(contamination=0.05, random_state=42, n_estimators=200)
+outlier_labels = iso_forest.fit_predict(df[num_cols_outliers])
+df = df[outlier_labels == 1].reset_index(drop=True)
+\end{lstlisting}
+
+\noindent$\rightarrow$ El dataset final tras los dos pasos contiene \textbf{3.969 clientes}, una pérdida total del 8,53\,\% respecto al original.
+
+\subsubsection{Codificación, escalado y reducción de dimensionalidad}
+
+El dataset contiene dos variables categóricas: \texttt{pais\_principal} (36 valores únicos) y \texttt{categoria\_favorita} (6). Para evitar generar columnas con muy poca señal, se agrupan en una categoría \texttt{Other} todas las categorías con frecuencia inferior al 1\,\%. Tras la agrupación, ambas variables quedan reducidas a 4 categorías cada una y se aplica codificación \textit{One-Hot}, resultando en 33 columnas.
+
+A continuación se aplica \texttt{RobustScaler}, que centra cada variable en su mediana y la escala por el rango intercuartílico (IQR). Frente a \texttt{StandardScaler}, es menos sensible a \textit{outliers} residuales que pudieran haber sobrevivido a la depuración anterior.
+
+Finalmente, el análisis de la matriz de correlaciones detecta \textbf{19 pares con $|r| > 0,7$}, evidenciando una redundancia importante en variables derivadas del mismo conjunto de transacciones. Se aplica PCA seleccionando el número mínimo de componentes que explican al menos el 80\,\% de la varianza, con un mínimo de 3. Con \textbf{3 componentes principales} se cubre el \textbf{84,14\,\% de la varianza}, y el dataset resultante $X_{\text{PCA}} \in \mathbb{R}^{3969 \times 3}$ constituye la entrada del modelo.
+
+\begin{table}[h]
+\centering
+\caption{Reducción de filas en el preprocesado del clustering jerárquico}
+\label{tab:reduccion}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Etapa} & \textbf{Eliminadas} & \textbf{Restantes} & \textbf{\% conservado} \\
+\midrule
+Dataset común (Parte I) & --- & 4.339 & 100,00\,\% \\
+Paso 1 — Recorte percentil 99 & 161 & 4.178 & 96,29\,\% \\
+Paso 2 — \textit{Isolation Forest} (5\,\%) & 209 & 3.969 & 91,47\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Descripción del modelo}
+
+El \textit{clustering} jerárquico aglomerativo es un algoritmo de aprendizaje no supervisado que construye una jerarquía de agrupaciones de forma ascendente: parte de cada punto como su propio \textit{cluster} y, en cada iteración, fusiona los dos más cercanos según un criterio de enlace (\textit{linkage}). El proceso continúa hasta que todos los puntos quedan en un único \textit{cluster}, generando un árbol de fusiones llamado \textbf{dendrograma}.
+
+A diferencia de \textit{K-Means}, no requiere fijar el número de \textit{clusters} de antemano: la decisión sobre cuántos grupos extraer se toma a posteriori, ``cortando'' el dendrograma a la altura adecuada. Esto convierte al dendrograma en una herramienta de diagnóstico única de este algoritmo: los saltos grandes en la altura de fusión indican configuraciones donde los \textit{clusters} están bien separados.
+
+El criterio de enlace determina cómo se mide la distancia entre dos \textit{clusters}. Las opciones principales son \textit{ward} (minimiza la varianza intra-\textit{cluster}, tiende a generar \textit{clusters} compactos y de tamaño similar), \textit{complete} (distancia máxima entre puntos), \textit{average} (distancia media) y \textit{single} (distancia mínima, suele formar cadenas alargadas y es muy sensible a \textit{outliers}).
+
+\subsection{Configuración del entrenamiento}
+
+Se utiliza la implementación \texttt{AgglomerativeClustering} de \textit{scikit-learn}, complementada con la función \texttt{linkage} de \textit{SciPy} para calcular y visualizar el dendrograma. La distancia es euclídea y, salvo en la comparación de criterios, el enlace es \textit{ward}.
+
+\begin{lstlisting}
+from sklearn.cluster import AgglomerativeClustering
+from scipy.cluster.hierarchy import linkage, dendrogram
+
+Z = linkage(X_pca, method='ward')
+modelo = AgglomerativeClustering(n_clusters=K, linkage='ward')
+labels = modelo.fit_predict(X_pca)
+\end{lstlisting}
+
+La estrategia de evaluación tiene tres fases: (1) inspección del dendrograma para identificar visualmente posibles puntos de corte; (2) búsqueda sistemática del número óptimo de \textit{clusters} probando $K \in \{2, 3, \ldots, 10\}$ y comparando silueta, Davies-Bouldin e inercia intra-\textit{cluster}; (3) fijado el $K$ óptimo, comparación de los cuatro criterios de enlace.
+
+\subsection{Análisis del dendrograma}
+
+El dendrograma sobre los 3.969 clientes en el espacio PCA, calculado con enlace \textit{ward}, se muestra en la Figura~\ref{fig:dendrograma}. Por legibilidad se ha truncado a las últimas 30 fusiones (modo \texttt{truncate\_mode='lastp'}); el árbol completo es ilegible con este tamaño de muestra.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/dendrograma.png}
+\caption{Dendrograma del \textit{clustering} jerárquico (enlace \textit{ward}, últimas 30 fusiones). Las líneas discontinuas marcan los cortes correspondientes a $K=3$ (verde), $K=4$ (rojo) y $K=5$ (morado).}
+\label{fig:dendrograma}
+\end{figure}
+
+El salto más pronunciado en la altura de fusión se produce entre las dos últimas uniones, lo que sugiere visualmente que la separación más nítida de la estructura del dataset corresponde a $K=2$. Para valores de $K$ mayores los saltos son progresivamente menores, indicando que las fusiones siguientes ya no separan grupos cualitativamente distintos.
+
+\subsection{Búsqueda del número óptimo de clusters}
+
+Se entrena el modelo con \textit{ward} para todos los valores $K \in \{2, \ldots, 10\}$ y se calculan las métricas para cada uno. Los resultados se recogen en el Cuadro~\ref{tab:k_optimo} y se representan en la Figura~\ref{fig:metricas_k}.\begin{table}[h]
+\centering
+\caption{Métricas de evaluación del \textit{clustering} jerárquico (enlace \textit{ward}) para distintos valores de $K$}
+\label{tab:k_optimo}
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{$K$} & \textbf{Silueta} & \textbf{Davies-Bouldin} & \textbf{Inercia} & \textbf{Tam. mín.} & \textbf{Tam. máx.} \\
+\midrule
+2  & \textbf{0,7403} & 0,7186 & 201.949 & 455 & 3.514 \\
+3  & 0,7184 & \textbf{0,6517} & 136.578 & 76 & 3.514 \\
+4  & 0,5749 & 0,9455 & 105.398 & 76 & 2.969 \\
+5  & 0,5919 & 0,7779 & 78.884 & 76 & 2.969 \\
+6  & 0,5972 & 0,7685 & 59.884 & 76 & 2.659 \\
+7  & 0,5931 & 0,7895 & 54.321 & 34 & 2.659 \\
+8  & 0,5796 & \textbf{0,7151} & 49.154 & 21 & 2.659 \\
+9  & 0,5803 & 0,8401 & 44.028 & 21 & 2.659 \\
+10 & 0,5806 & 0,8879 & 39.274 & 21 & 2.659 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/metricas_k.png}
+\caption{Evolución de las métricas de calidad del \textit{clustering} en función de $K$: silueta (izquierda, mayor mejor), Davies-Bouldin (centro, menor mejor) e inercia intra-\textit{cluster} (derecha, método del codo).}
+\label{fig:metricas_k}
+\end{figure}
+
+La silueta máxima se alcanza en $K=2$ (0,7403), con una diferencia notable respecto a los siguientes valores. El Davies-Bouldin muestra su mínimo en $K=3$ (0,6517), pero a costa de fragmentar uno de los grupos en dos subgrupos muy desbalanceados (76 y 3.514 clientes). Se selecciona $K=2$ como configuración final por la mayor separación en silueta y por presentar tamaños más equilibrados (455 y 3.514).
+
+\subsection{Comparación de criterios de enlace}
+
+Para confirmar la elección de \textit{ward}, se comparan los cuatro criterios de enlace con $K=2$ fijo. Los resultados aparecen en el Cuadro~\ref{tab:linkages}.
+
+\begin{table}[h]
+\centering
+\caption{Comparación de criterios de enlace ($K=2$)}
+\label{tab:linkages}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Linkage} & \textbf{Silueta} & \textbf{Davies-Bouldin} & \textbf{Tamaños} \\
+\midrule
+\textit{ward}     & 0,7403 & 0,7186 & 455 / 3.514 \\
+\textit{complete} & 0,8190 & 0,2738 & 36 / 3.933 \\
+\textit{average}  & 0,8726 & 0,1197 & 2 / 3.967 \\
+\textit{single}   & 0,8726 & 0,1197 & 2 / 3.967 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A primera vista, \textit{average} y \textit{single} ofrecen la mejor silueta (0,87) y el mejor Davies-Bouldin (0,12). Sin embargo, ambos producen un \textit{cluster} con 2 clientes y otro con 3.967, lo que indica que están identificando \textit{outliers} residuales, no segmentos de mercado. \textit{Complete} (36 / 3.933) también es desbalanceado. Solo \textbf{\textit{ward}} produce \textit{clusters} con tamaños operativamente útiles (455 y 3.514), por lo que se confirma como criterio final.
+
+\subsection{Modelo final y métricas}
+
+La configuración seleccionada es \texttt{AgglomerativeClustering(n\_clusters=2, linkage='ward')} entrenada sobre los 3.969 clientes en el espacio PCA de 3 dimensiones. Las métricas finales se recogen en el Cuadro~\ref{tab:resumen_final}.
+
+\begin{table}[h]
+\centering
+\caption{Resumen del modelo final}
+\label{tab:resumen_final}
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica / parámetro} & \textbf{Valor} \\
+\midrule
+Algoritmo & \texttt{AgglomerativeClustering} \\
+Linkage & \textit{ward} \\
+$K$ (número de \textit{clusters}) & 2 \\
+Clientes utilizados & 3.969 \\
+Componentes PCA & 3 (84,14\,\% varianza) \\
+Silueta & 0,7403 \\
+Davies-Bouldin & 0,7186 \\
+Tamaño \textit{cluster} 0 & 455 (11,5\,\%) \\
+Tamaño \textit{cluster} 1 & 3.514 (88,5\,\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+Se generan cuatro visualizaciones para diagnosticar la calidad de la segmentación: proyección en PCA 2D y 3D, análisis de silueta por \textit{cluster} y heatmap del perfil medio.
+
+\subsubsection{Visualización 2D y 3D en espacio PCA}
+
+Las proyecciones 2D y 3D (Figuras~\ref{fig:pca2d} y~\ref{fig:pca3d}) permiten comprobar visualmente si los grupos están separados en el espacio de mayor varianza. Se observa una nube principal compacta (\textit{cluster} 1) y una distribución más dispersa que se extiende hacia la derecha y abajo (\textit{cluster} 0).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/pca_2d.png}
+\caption{Clientes proyectados sobre las dos primeras componentes principales, coloreados por \textit{cluster}.}
+\label{fig:pca2d}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/pca_3d.png}
+\caption{Clientes proyectados en las tres componentes principales del análisis PCA.}
+\label{fig:pca3d}
+\end{figure}
+
+\subsubsection{Análisis silhouette}
+
+El gráfico de silueta (Figura~\ref{fig:silueta}) muestra el coeficiente individual de cada cliente. La línea discontinua roja indica la media general (0,740). Una buena segmentación se caracteriza por barras anchas y altas, sin valores negativos.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/silueta_por_cluster.png}
+\caption{Coeficiente de silueta individual de cada cliente, agrupado por \textit{cluster}.}
+\label{fig:silueta}
+\end{figure}
+
+\subsubsection{Heatmap de perfiles por cluster}
+
+El \textit{heatmap} (Figura~\ref{fig:heatmap}) visualiza las características promedio de cada \textit{cluster} normalizadas como $z$-scores. Los colores rojos indican valores altos respecto a la media global, los azules valores bajos. Las anotaciones contienen los valores medios reales.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/heatmap_perfil.png}
+\caption{Perfil de \textit{clusters}: el color codifica el $z$-score por columna; las anotaciones contienen los valores medios reales.}
+\label{fig:heatmap}
+\end{figure}
+
+\subsection{Perfiles de clientes por cluster}
+
+Los valores medios de las variables clave por \textit{cluster} se presentan en el Cuadro~\ref{tab:perfil}. La variable que diferencia ambos grupos de forma abrumadora es \texttt{porcentaje\_compras\_fines\_semana}: 78,64\,\% en el \textit{cluster} 0 frente a 4,39\,\% en el \textit{cluster} 1. El resto de variables muestran diferencias mucho menores; el valor monetario total y mensual es prácticamente idéntico entre ambos grupos.
+
+\begin{table}[h]
+\centering
+\caption{Perfil medio por \textit{cluster}}
+\label{tab:perfil}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Variable} & \textbf{\textit{Cluster} 0 (n=455)} & \textbf{\textit{Cluster} 1 (n=3.514)} \\
+\midrule
+\texttt{total\_compras} & 104,98 & 60,20 \\
+\texttt{valor\_total\_compras} (GBP) & 1.052,20 & 1.076,04 \\
+\texttt{valor\_medio\_por\_compra} (GBP) & 12,88 & 22,99 \\
+\texttt{cantidad\_total\_productos} & 610,83 & 636,04 \\
+\texttt{dias\_como\_cliente} & 125,83 & 121,75 \\
+\texttt{frecuencia\_compra} & 12,17 & 8,27 \\
+\texttt{valor\_mensual\_medio} (GBP) & 350,28 & 378,07 \\
+\texttt{porcentaje\_compras\_fines\_semana} & \textbf{78,64\,\%} & \textbf{4,39\,\%} \\
+\texttt{total\_productos\_diferentes} & 79,97 & 47,63 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Cluster 0 — Compradores de fin de semana (455 clientes).}
+\begin{itemize}
+    \item Compras en fin de semana: 78,6\,\% (muy alto)
+    \item Total compras: 105,0 (alto)
+    \item Frecuencia compra: 12,17 (alta)
+    \item Productos diferentes: 80,0 (variedad amplia)
+    \item \textbf{Perfil}: clientes con compras concentradas en sábado/domingo, ticket medio bajo y cesta diversificada. Compatible con clientes B2C minoristas que compran de forma recreativa fuera del horario laboral.
+\end{itemize}
+
+\paragraph{Cluster 1 — Compradores entre semana (3.514 clientes).}
+\begin{itemize}
+    \item Compras en fin de semana: 4,4\,\% (muy bajo)
+    \item Valor medio por compra: 22,99 GBP (alto)
+    \item Valor mensual medio: 378,07 GBP (alto)
+    \item Total compras: 60,2 (medio-bajo, compensado por ticket alto)
+    \item \textbf{Perfil}: la mayoría del dataset. Compran de lunes a viernes, con menor frecuencia pero mayor ticket medio. Compatible con clientes B2B mayoristas o profesionales que realizan pedidos en horario laboral.
+\end{itemize}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Métricas internas robustas}: silueta de 0,7403, dentro del rango considerado ``estructura fuerte'' en la literatura ($> 0,7$); Davies-Bouldin de 0,7186, indicando buena separación.
+    \item \textbf{Clusters de tamaño operativamente útil}: 88,5\,\% / 11,5\,\%, lejos del riesgo de tener un grupo dominante con el 99\,\% de los datos.
+    \item \textbf{Diagnóstico visual único}: el dendrograma confirma que $K=2$ corresponde al corte natural del dataset, una herramienta de la que \textit{K-Means} no dispone.
+    \item \textbf{Determinismo}: el algoritmo es reproducible al 100\,\%, sin depender de inicialización aleatoria.
+    \item \textbf{Interpretabilidad de negocio}: los grupos se asocian a perfiles claros (B2C de fin de semana vs B2B entre semana) que permiten acciones comerciales diferenciadas.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Separación unidimensional}: la práctica totalidad de la diferencia entre los dos grupos se concentra en una única variable (\texttt{porcentaje\_compras\_fines\_semana}). Las demás dimensiones del comportamiento de compra son muy similares entre ambos.
+    \item \textbf{Estructura limitada del dataset}: para $K > 2$ las métricas se degradan significativamente y los \textit{clusters} se desbalancean, lo que sugiere que el dataset no contiene de forma natural más de dos segmentos bien diferenciados.
+    \item \textbf{Desbalance entre grupos}: 88,5\,\% / 11,5\,\% limita el valor de las acciones específicas que se podrían dirigir al \textit{cluster} minoritario.
+    \item \textbf{Coste computacional}: el algoritmo es $O(n^2)$ en memoria. En este dataset (3.969 clientes) no afecta, pero sería un problema en bases de cientos de miles de clientes.
+    \item \textbf{Juicio cualitativo en la elección final}: la decisión de $K$ y de \textit{linkage} incorpora consideraciones de equilibrio de tamaños, no es puramente automática a partir de las métricas.
+\end{itemize}
+
+\subsection{Visualizaciones complementarias del preprocesado (opcional)}
+
+\begin{tcolorbox}[colback=gray!5,colframe=gray!40,boxrule=0.5pt]
+\textit{Esta sección recoge dos gráficas generadas durante el preprocesado del notebook que enriquecen visualmente el análisis pero no son imprescindibles para entender el proceso. Se incluyen como apoyo opcional y pueden eliminarse sin afectar a la coherencia del documento.}
+\end{tcolorbox}
+
+\subsubsection{Matriz de correlación entre variables}
+
+La Figura~\ref{fig:matriz_corr} muestra la matriz de correlación completa entre las 33 variables del dataset escalado. Permite visualizar de un vistazo los bloques de variables redundantes: el cuadrante superior izquierdo concentra las correlaciones más fuertes (variables de volumen y monetarias), mientras que las variables categóricas codificadas (parte inferior derecha) presentan correlaciones débiles con el resto.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/matriz_correlacion.png}
+\caption{Matriz de correlación entre las 33 variables del dataset escalado. Los tonos rojos indican correlación positiva fuerte, los azules correlación negativa.}
+\label{fig:matriz_corr}
+\end{figure}
+
+\subsubsection{Varianza explicada por PCA}
+
+La Figura~\ref{fig:varianza_pca} muestra la varianza explicada por cada componente individual y la curva acumulada. La primera componente recoge por sí sola un 65,9\,\% de la varianza, la segunda un 11,1\,\% adicional y la tercera un 7,2\,\%. A partir de la cuarta componente la contribución cae por debajo del 4\,\%, lo que sugiere que las tres primeras concentran la práctica totalidad de la información estructural del dataset.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/varianza_pca.png}
+\caption{Análisis de varianza explicada por PCA. A la izquierda, varianza explicada por cada componente individual; a la derecha, curva acumulada con líneas de referencia en el 60\,\% y el 80\,\%.}
+\label{fig:varianza_pca}
+\end{figure}
+
+% =============================================================================
+\section{Modelo DBSCAN}
+\label{sec:dbscan}
+
+\subsection{Preprocesado específico para DBSCAN}
+
+Sobre el dataset común generado en la Parte I se aplica un preprocesado específico que prioriza la robustez frente a valores extremos, ya que DBSCAN es sensible a la escala y a la dimensionalidad de los datos.
+
+\subsubsection{Selección de variables}
+
+Se utilizan las 9 variables más representativas del comportamiento de compra:
+
+\begin{itemize}
+    \item \texttt{total\_compras}, \texttt{valor\_total\_compras}, \texttt{valor\_medio\_por\_compra}
+    \item \texttt{frecuencia\_compra}, \texttt{dias\_como\_cliente}, \texttt{cantidad\_total\_productos}
+    \item \texttt{porcentaje\_compras\_fines\_semana}, \texttt{meses\_activo}, \texttt{valor\_mensual\_medio}
+\end{itemize}
+
+\subsubsection{Escalado robusto y eliminación de outliers}
+
+Se aplica \texttt{RobustScaler} para escalar las variables. A continuación se utiliza \texttt{EllipticEnvelope} con \texttt{contamination=0.10} para eliminar el 10\,\% de clientes más atípicos en términos multivariantes, dejando el dataset depurado con 3.905 clientes.
+
+\subsubsection{Reducción de dimensionalidad}
+
+Se aplica PCA con 3 componentes, que explican el \textbf{87,5\,\% de la varianza total} (PC1: 58,4\,\%; PC2: 18,1\,\%; PC3: 10,9\,\%). Esto permite visualización 3D sin pérdida significativa de información.
+
+\subsection{Descripción del modelo}
+
+DBSCAN (\textit{Density-Based Spatial Clustering of Applications with Noise}) es un algoritmo de \textit{clustering} basado en densidad, especialmente eficaz para identificar \textit{clusters} de formas arbitrarias y detectar puntos atípicos en grandes volúmenes de datos. A diferencia de K-Means, no requiere especificar el número de \textit{clusters} a priori. En su lugar, utiliza dos parámetros clave:
+
+\begin{itemize}
+    \item \textbf{eps ($\varepsilon$)}: el radio máximo de vecindad que define la distancia de búsqueda entre puntos.
+    \item \textbf{min\_samples}: el número mínimo de puntos requeridos dentro del radio $\varepsilon$ para que un punto se considere central (\textit{core point}).
+\end{itemize}
+
+El objetivo es identificar grupos de clientes similares basándose en sus patrones de comportamiento de compra, permitiendo la detección simultánea de clientes atípicos.
+
+\subsection{Configuración del entrenamiento}
+
+Se realiza una búsqueda exhaustiva de parámetros óptimos. El rango de \texttt{eps} se calcula dinámicamente a partir del percentil de las distancias al $k$-vecino más cercano, obteniéndose un intervalo de \textbf{0,0312 a 0,2052}. Se exploran 100 combinaciones (\texttt{eps}=20 valores, \texttt{min\_samples}=5 valores) y se evalúan con métricas múltiples (silueta, Davies-Bouldin, Calinski-Harabasz) combinadas con restricciones de equilibrio entre \textit{clusters}.
+
+\begin{lstlisting}
+def calcular_rango_eps(X, min_samples_ref=5):
+    nbrs = NearestNeighbors(n_neighbors=min_samples_ref).fit(X)
+    distancias, _ = nbrs.kneighbors(X)
+    distancias_k = distancias[:, min_samples_ref - 1]
+    eps_min = float(np.percentile(distancias_k, 10))
+    eps_max = float(np.percentile(distancias_k, 70))
+    return eps_min, eps_max, distancias_k
+\end{lstlisting}
+
+\subsection{Modelo final y métricas}
+
+Tras la búsqueda, la configuración óptima seleccionada es \texttt{eps=0.1411} y \texttt{min\_samples=15}. El Cuadro~\ref{tab:dbscan_resumen} resume el modelo final.
+
+\begin{table}[h]
+\centering
+\caption{Resumen del modelo DBSCAN final}
+\label{tab:dbscan_resumen}
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica / parámetro} & \textbf{Valor} \\
+\midrule
+\texttt{eps} & 0,1411 \\
+\texttt{min\_samples} & 15 \\
+\textit{Clusters} encontrados & 4 \\
+Puntos de ruido & 1.927 (49,3\,\%) \\
+Puntos asignados a \textit{cluster} & 1.978 (50,7\,\%) \\
+Silueta & 0,3386 \\
+Davies-Bouldin & 0,5999 \\
+Calinski-Harabasz & 1.012,36 \\
+Componentes PCA & 3 (87,5\,\% varianza) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Análisis visual de los resultados}
+
+\subsubsection{Gráfico K-distancias}
+
+El gráfico de $k$-distancias (Figura~\ref{fig:dbscan_kdist}) muestra las distancias ordenadas de cada punto al $k$-ésimo vecino más cercano. La línea punteada roja indica el valor óptimo de \texttt{eps} (0,1411) detectado automáticamente, donde el gráfico presenta una inflexión clara que separa puntos densamente empaquetados de aquellos más aislados.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/dbscan/k_distancias.png}
+\caption{Gráfico $k$-distancias con \texttt{eps} óptimo detectado automáticamente.}
+\label{fig:dbscan_kdist}
+\end{figure}
+
+\subsubsection{Visualización 2D y 3D en espacio PCA}
+
+La proyección 2D (Figura~\ref{fig:dbscan_pca2d}) revela la distribución de clientes en los dos componentes principales que explican el 76,5\,\% de la varianza. Se observan claramente 4 \textit{clusters} con patrones distintos, así como puntos aislados clasificados como ruido. La visualización 3D (Figura~\ref{fig:dbscan_pca3d}) incorpora la tercera componente y proporciona una perspectiva más completa de la separación.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/dbscan/pca_2d.png}
+\caption{Clientes proyectados sobre las dos primeras componentes principales.}
+\label{fig:dbscan_pca2d}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/dbscan/pca_3d.png}
+\caption{Clientes proyectados en las tres componentes principales del análisis PCA.}
+\label{fig:dbscan_pca3d}
+\end{figure}
+
+\subsubsection{Distribución de tamaños de clusters}
+
+La Figura~\ref{fig:dbscan_distribucion} muestra que los \textit{clusters} tienen tamaños desiguales: \textit{Cluster} 0 (868 clientes), \textit{Cluster} 1 (1.092 clientes), \textit{Cluster} 2 (16 clientes) y \textit{Cluster} 3 (2 clientes). Esta distribución es característica de DBSCAN, que identifica \textit{clusters} de densidad variable.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras_clustering/dbscan/distribucion_clusters.png}
+\caption{Distribución de tamaños de los \textit{clusters} obtenidos.}
+\label{fig:dbscan_distribucion}
+\end{figure}
+
+\subsubsection{Análisis Silhouette}
+
+El análisis de silueta por \textit{cluster} (Figura~\ref{fig:dbscan_silhouette}) muestra la solidez de la asignación. La línea punteada roja (0,339) indica la media general.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/dbscan/silhouette.png}
+\caption{Análisis de silueta por \textit{cluster}.}
+\label{fig:dbscan_silhouette}
+\end{figure}
+
+\subsubsection{Heatmap de perfiles por cluster}
+
+El \textit{heatmap} (Figura~\ref{fig:dbscan_heatmap}) visualiza las características promedio de cada \textit{cluster} normalizadas como $z$-scores. Los colores verdes indican valores altos y los rojos valores bajos.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/dbscan/heatmap_perfiles.png}
+\caption{\textit{Heatmap} de perfiles por \textit{cluster}: colores codifican el $z$-score; números indican la media real.}
+\label{fig:dbscan_heatmap}
+\end{figure}
+
+\subsection{Perfiles de clientes por cluster}
+
+\paragraph{Cluster 0 — Clientes Ocasionales (868 clientes).}
+\begin{itemize}
+    \item Total compras: 13,7 (bajo)
+    \item Valor total: 250,45\,€ (bajo)
+    \item Días como cliente: 1,03 (muy recientes)
+    \item \textbf{Perfil}: clientes nuevos o muy poco activos, posibles \textit{leads} que aún no han realizado compras significativas.
+\end{itemize}
+
+\paragraph{Cluster 1 — Clientes VIP Activos (1.092 clientes).}
+\begin{itemize}
+    \item Total compras: 54,7 (muy alto)
+    \item Valor total: 848,41\,€ (muy alto)
+    \item Días como cliente: 167,8 (clientes establecidos)
+    \item \textbf{Perfil}: clientes leales y de alto valor, son el corazón del negocio con compras frecuentes y gasto total elevado.
+\end{itemize}
+
+\paragraph{Cluster 2 — Clientes Estacionales (16 clientes).}
+\begin{itemize}
+    \item Total compras: 29,7 (medio)
+    \item Valor medio por compra: 6,02\,€ (muy bajo)
+    \item Frecuencia compra: 29,7 (alta)
+    \item \textbf{Perfil}: clientes con compras muy frecuentes pero de bajo valor unitario; probablemente comparten características estacionales o de producto específico.
+\end{itemize}
+
+\paragraph{Cluster 3 — Clientes Premium Excepcionales (2 clientes).}
+\begin{itemize}
+    \item Total compras: 129,81 (extremadamente alto)
+    \item Valor total: 2.329,16\,€ (máximo)
+    \item Días como cliente: 241,96 (antigüedad máxima)
+    \item \textbf{Perfil}: clientes de élite con comportamiento muy superior al resto; merecen estrategias de retención \textit{premium} y atención personalizada.
+\end{itemize}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Detección automática de anomalías}: DBSCAN identifica 1.927 clientes atípicos (49,3\,\%) sin necesidad de un paso adicional, que podrían representar fraude, errores de datos o comportamientos extraordinarios.
+    \item \textbf{Sin necesidad de especificar $k$}: el algoritmo descubre automáticamente el número óptimo de \textit{clusters} (4) basándose en la densidad de los datos.
+    \item \textbf{Clusters de forma arbitraria}: puede identificar agrupaciones con formas no esféricas, especialmente útil para datos de comportamiento de clientes complejos.
+    \item \textbf{Métricas sólidas}: Davies-Bouldin de 0,5999 indica buena separación; Calinski-Harabasz de 1.012,36 confirma alta densidad y separación entre grupos.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Alto porcentaje de ruido (49,3\,\%)}: más de la mitad de los clientes se clasificaron como atípicos. Esto puede indicar que el dataset tiene una distribución muy dispersa o que las características no capturan bien la verdadera estructura de comportamiento.
+    \item \textbf{Clusters desbalanceados}: los \textit{clusters} 2 y 3 son muy pequeños (16 y 2 clientes respectivamente), lo que limita la estabilidad de las conclusiones sobre estos segmentos.
+    \item \textbf{Sensibilidad a parámetros}: DBSCAN es muy sensible a \texttt{eps} y \texttt{min\_samples}; pequeños cambios pueden producir particiones muy distintas.
+    \item \textbf{Silueta moderada (0,3386)}: aunque aceptable, sugiere que algunos clientes están en la frontera entre \textit{clusters} y podrían ser reclasificados con cambios menores en los parámetros.
+\end{itemize}
+
+% =============================================================================
+\section{Modelo HDBSCAN}
+\label{sec:hdbscan}
+
+\subsection{Preprocesado específico para HDBSCAN}
+
+Sobre el dataset común generado en la Parte I se aplica un preprocesado pensado para preservar la información necesaria para detectar agrupaciones de densidad variable. Se seleccionan las 9 variables clave de comportamiento (las mismas que en DBSCAN), se imputan los valores faltantes con la mediana en cada columna y se aplica \texttt{StandardScaler} para escalar las variables al mismo rango. A diferencia de otros modelos, HDBSCAN no requiere una etapa explícita de eliminación de \textit{outliers} previa, ya que el propio algoritmo identifica los puntos atípicos como ruido.
+
+\subsection{Descripción del modelo}
+
+HDBSCAN (\textit{Hierarchical Density-Based Spatial Clustering of Applications with Noise}) es una extensión jerárquica de DBSCAN. A diferencia de DBSCAN, no requiere fijar un valor único de \texttt{eps}: construye una jerarquía de \textit{clusters} a múltiples escalas de densidad y selecciona automáticamente la partición más estable. Esto le permite detectar \textit{clusters} de densidades muy diferentes en un mismo dataset, algo que DBSCAN no consigue con un único parámetro.
+
+Sus parámetros principales son:
+
+\begin{itemize}
+    \item \textbf{min\_cluster\_size}: tamaño mínimo de un \textit{cluster} válido. Influye en la granularidad de la segmentación.
+    \item \textbf{min\_samples}: número mínimo de puntos requeridos para considerar una zona como densa.
+    \item \textbf{cluster\_selection\_method}: estrategia de selección de \textit{clusters} desde el árbol jerárquico (\texttt{eom} en este caso).
+\end{itemize}
+
+\subsection{Configuración del entrenamiento}
+
+Se realiza una búsqueda exhaustiva de hiperparámetros explorando combinaciones de \texttt{min\_cluster\_size} $\in \{10, 15, 20, 25, 30, 40, 50\}$ y \texttt{min\_samples} $\in \{1, 3, 5, 10\}$. Para cada combinación se calculan tres métricas (silueta, Davies-Bouldin, Calinski-Harabasz) más el equilibrio entre tamaños de \textit{clusters}. La selección final se hace mediante una puntuación ponderada que combina las cuatro dimensiones, descartando configuraciones con más de 30\,\% de ruido o tamaños de \textit{clusters} extremadamente desbalanceados.
+
+\begin{lstlisting}
+clusterer = hdbscan.HDBSCAN(
+    min_cluster_size=min_cluster_size,
+    min_samples=min_samples,
+    metric='euclidean',
+    cluster_selection_method='eom'
+)
+etiquetas = clusterer.fit_predict(datos_escalados)
+\end{lstlisting}
+
+\subsection{Modelo final}
+
+La configuración óptima identificada produce \textbf{8 clusters} sobre el dataset, con un porcentaje de ruido del \textbf{26,0\,\%} (1.127 clientes clasificados como atípicos), tal como puede observarse en las visualizaciones generadas (Figura~\ref{fig:hdbscan_distribucion}).
+
+\subsection{Análisis visual de los resultados}
+
+\subsubsection{Análisis de Silhouette}
+
+La Figura~\ref{fig:hdbscan_silhouette} muestra el coeficiente de silueta individual de cada cliente, agrupado por \textit{cluster}. La línea discontinua roja indica el valor medio del análisis. Algunos \textit{clusters} (0, 5, 6) presentan barras anchas y altas, mientras que otros (3, 4) muestran mayor variabilidad e incluso valores negativos en algunos puntos.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/hdbscan/silhouette_analysis.png}
+\caption{Coeficiente de silueta individual de cada cliente, agrupado por \textit{cluster}.}
+\label{fig:hdbscan_silhouette}
+\end{figure}
+
+\subsubsection{Distribución por segmento}
+
+La Figura~\ref{fig:hdbscan_distribucion} muestra la distribución de clientes en cada uno de los 8 \textit{clusters} más el ruido. Los tamaños son notablemente desbalanceados, con un \textit{cluster} mayoritario (1.360 clientes, 31,3\,\%), un grupo grande de ruido (1.127 clientes, 26,0\,\%) y varios \textit{clusters} muy pequeños (de 68 a 255 clientes).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/hdbscan/distribucion_segmentos.png}
+\caption{Distribución de clientes por segmento, incluyendo el ruido.}
+\label{fig:hdbscan_distribucion}
+\end{figure}
+
+\subsubsection{Visualización 2D en espacio PCA}
+
+La Figura~\ref{fig:hdbscan_pca} muestra los \textit{clusters} proyectados sobre las dos primeras componentes principales (PC1: 36,7\,\%; PC2: 22,8\,\%). Los centroides de los \textit{clusters} aparecen marcados con ``X'' rojas y se concentran principalmente en una zona compacta del espacio, mientras los puntos de ruido se distribuyen ampliamente alrededor.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/hdbscan/pca_2d.png}
+\caption{Separación de \textit{clusters} en espacio PCA 2D.}
+\label{fig:hdbscan_pca}
+\end{figure}
+
+\subsubsection{Distribución de distancias intra e inter-cluster}
+
+La Figura~\ref{fig:hdbscan_distancias} muestra la distribución de distancias intra-\textit{cluster} (azul, dentro del mismo grupo) e inter-\textit{cluster} (rojo, entre grupos distintos). El ratio entre ambas distribuciones aparece anotado en la propia figura y permite valorar el grado de separación entre \textit{clusters}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/hdbscan/distancias_intra_inter.png}
+\caption{Distribución de distancias intra-\textit{cluster} (azul) e inter-\textit{cluster} (rojo).}
+\label{fig:hdbscan_distancias}
+\end{figure}
+
+\subsubsection{Matriz de distancias entre centroides}
+
+La Figura~\ref{fig:hdbscan_centroides} muestra la matriz de distancias entre los centroides de los 8 \textit{clusters}. Permite identificar qué \textit{clusters} son más similares entre sí (distancias bajas, color oscuro) y cuáles más diferentes (distancias altas, color claro).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figuras_clustering/hdbscan/matriz_centroides.png}
+\caption{Matriz de distancias entre centroides de los 8 \textit{clusters}.}
+\label{fig:hdbscan_centroides}
+\end{figure}
+
+\subsubsection{Calidad por cluster (Boxplot)}
+
+La Figura~\ref{fig:hdbscan_boxplot} muestra mediante \textit{boxplots} la distribución de coeficientes de silueta dentro de cada \textit{cluster}. Permite identificar qué \textit{clusters} tienen miembros más cohesionados.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figuras_clustering/hdbscan/silhouette_boxplot.png}
+\caption{Distribución de coeficientes de silueta por \textit{cluster} (\textit{boxplot}).}
+\label{fig:hdbscan_boxplot}
+\end{figure}
+
+\subsubsection{Análisis de comportamiento de compra}
+
+Las Figuras~\ref{fig:hdbscan_valor_freq},~\ref{fig:hdbscan_ticket} y~\ref{fig:hdbscan_compras_antig} muestran la distribución de los segmentos en distintas dimensiones de comportamiento: valor total vs frecuencia, ticket promedio por segmento y compras vs antigüedad.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/hdbscan/valor_vs_frecuencia.png}
+\caption{Valor total vs frecuencia de compra, coloreado por segmento.}
+\label{fig:hdbscan_valor_freq}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/hdbscan/ticket_por_segmento.png}
+\caption{\textit{Boxplot} del ticket promedio por segmento.}
+\label{fig:hdbscan_ticket}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\textwidth]{figuras_clustering/hdbscan/compras_vs_antiguedad.png}
+\caption{Total de compras vs antigüedad del cliente, coloreado por segmento.}
+\label{fig:hdbscan_compras_antig}
+\end{figure}
+
+\subsection{Perfiles de clientes por cluster}
+
+El \textit{pipeline} clasifica automáticamente cada \textit{cluster} en un perfil de \textit{marketing} a partir del comportamiento medio de sus miembros, comparado con los percentiles 25 y 75 del dataset completo. Los perfiles posibles son:
+
+\begin{itemize}
+    \item \textbf{VIP}: alto valor y alta frecuencia. Programas de lealtad \textit{premium}, acceso anticipado a productos.
+    \item \textbf{Premium}: alto valor, baja frecuencia. Ofertas exclusivas, eventos VIP.
+    \item \textbf{Frecuentes}: bajo valor, alta frecuencia. \textit{Cross-selling}, descuentos por volumen.
+    \item \textbf{Nuevos}: recién llegados, bajo valor. Ofertas de bienvenida, \textit{onboarding} personalizado.
+    \item \textbf{Inactivos}: bajo \textit{engagement}. Campañas de reactivación.
+    \item \textbf{Regulares}: comportamiento estándar. \textit{Marketing mix} equilibrado.
+\end{itemize}
+
+\subsection{Consideraciones sobre la validez del modelo}
+
+\subsubsection{Fortalezas del modelo}
+
+\begin{itemize}
+    \item \textbf{Detección automática de número de clusters}: HDBSCAN identifica 8 segmentos sin necesidad de fijar el valor a priori.
+    \item \textbf{Detección automática de anomalías}: 1.127 clientes (26,0\,\%) son clasificados como ruido y separados del análisis principal.
+    \item \textbf{Buena separación entre clusters}: las distribuciones de distancias intra e inter-\textit{cluster} (Figura~\ref{fig:hdbscan_distancias}) confirman que los grupos están diferenciados en el espacio.
+    \item \textbf{Capacidad de detectar clusters de densidad variable}: identifica simultáneamente grupos grandes y pequeños sin necesidad de elegir un único umbral de densidad.
+    \item \textbf{Búsqueda automática de hiperparámetros}: el \textit{pipeline} explora múltiples configuraciones y selecciona la más estable mediante una puntuación ponderada.
+\end{itemize}
+
+\subsubsection{Limitaciones y consideraciones}
+
+\begin{itemize}
+    \item \textbf{Silueta moderada}: el valor medio observado se sitúa por debajo del umbral típico (0,25--0,5) que indicaría una separación clara, lo que sugiere solapamientos entre algunos \textit{clusters}.
+    \item \textbf{Tamaños muy desbalanceados}: con 8 \textit{clusters} y un grupo mayoritario de 1.360 clientes (31,3\,\%) frente a algunos de menos de 100 clientes, el peso de los \textit{clusters} pequeños en una estrategia comercial es limitado.
+    \item \textbf{Porcentaje notable de ruido (26,0\,\%)}: aunque dentro del límite establecido (30\,\%), implica que uno de cada cuatro clientes no se asigna a ningún segmento, lo que puede dificultar acciones específicas sobre ellos.
+    \item \textbf{Mayor complejidad técnica}: HDBSCAN requiere una librería externa (\texttt{hdbscan}, fuera de \texttt{scikit-learn}) y la interpretación del árbol jerárquico es menos directa que la de modelos como K-Means.
+    \item \textbf{Sensibilidad a la selección de variables}: como cualquier modelo basado en densidad, la calidad del resultado depende de que las 9 variables elegidas capturen efectivamente la estructura de comportamiento.
+\end{itemize}
+
+% =============================================================================
+\section{Comparativa y modelo seleccionado}
+
+\subsection{Tabla comparativa de los cuatro modelos}
+
+El Cuadro~\ref{tab:comparativa_final} resume los resultados de los cuatro modelos sobre el mismo dataset común generado en la Parte~I. Los datos sirven como base para la decisión sobre el modelo a seleccionar como propuesta principal del proyecto.
+
+\begin{table}[h]
+\centering
+\caption{Comparativa de los cuatro modelos de \textit{clustering}}
+\label{tab:comparativa_final}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Aspecto} & \textbf{K-Means} & \textbf{Jerárquico} & \textbf{DBSCAN} & \textbf{HDBSCAN} \\
+\midrule
+\textit{Clusters} encontrados & 2 & 2 & 4 & 8 \\
+Clientes utilizados & 4.208 & 3.969 & 3.905 & 4.339 \\
+\% eliminado preprocesado & 3,0\,\% & 8,5\,\% & 10,0\,\% & --- \\
+\% ruido (sin asignar) & --- & --- & \textbf{49,3\,\%} & 26,0\,\% \\
+Silueta & 0,5257 & \textbf{0,7403} & 0,3386 & 0,248 \\
+Davies-Bouldin & --- & 0,7186 & 0,5999 & --- \\
+Calinski-Harabasz & --- & --- & 1.012,36 & --- \\
+Tamaño \textit{cluster} mín. & 535 (12,7\,\%) & 455 (11,5\,\%) & 2 (0,1\,\%) & 68 (1,6\,\%) \\
+Tamaño \textit{cluster} máx. & 3.673 (87,3\,\%) & 3.514 (88,5\,\%) & 1.092 (28,0\,\%) & 1.360 (31,3\,\%) \\
+Detección de \textit{outliers} & Externa (LOF) & Externa (P99+IF) & Nativa & Nativa \\
+PCA aplicado & 10 comp. (91,8\,\%) & 3 comp. (84,1\,\%) & 3 comp. (87,5\,\%) & No \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Las casillas marcadas con ``---'' corresponden a métricas no calculadas o no aplicables al modelo en cuestión.
+
+\subsection{Modelo seleccionado: K-Means}
+
+Tras analizar los cuatro modelos, el grupo selecciona como \textbf{modelo principal el K-Means} (versión con preprocesado mejorado mediante PCA + LOF), por las siguientes razones:
+
+\begin{itemize}
+    \item \textbf{Convergencia entre criterios}: las tres métricas internas (silueta 0,5257, Calinski-Harabasz y Davies-Bouldin) señalan unánimemente $k=2$ como configuración óptima, con una caída pronunciada y limpia de la silueta entre $k=2$ (0,5257) y $k=3$ (0,2627) que confirma la robustez de la elección.
+    \item \textbf{Silueta dentro del rango ``buena estructura''} ($>$0,5), suficiente para una segmentación operativa.
+    \item \textbf{Conservación de datos}: utiliza el 97\,\% del dataset original (4.208 sobre 4.339), frente al 91\,\% del jerárquico o el 50\,\% efectivo de DBSCAN tras el ruido.
+    \item \textbf{Simplicidad e interpretabilidad}: la naturaleza basada en centroides permite caracterizar cada \textit{cluster} con un punto representativo, facilitando que los resultados se transformen directamente en campañas de \textit{marketing} y acciones comerciales.
+    \item \textbf{Aplicabilidad directa en CRM}: la asignación de cada cliente a un segmento concreto se exporta a CSV y es directamente integrable con plataformas de automatización comercial.
+    \item \textbf{Rapidez y reproducibilidad}: el algoritmo es eficiente incluso en datasets grandes y, con \texttt{n\_init=50} y \texttt{random\_state=42}, los resultados son completamente reproducibles.
+\end{itemize}
+
+\subsection{Modelo de respaldo: Clustering Jerárquico}
+
+El \textbf{Clustering Jerárquico} queda documentado como \textbf{segunda opción válida}. Aunque ofrece una silueta superior (0,7403 vs 0,5257), su coste computacional es mayor ($O(n^2)$ en memoria) y la segmentación que produce es complementaria pero no esencialmente distinta de la del K-Means.
+
+Lo más relevante es que \textbf{dos algoritmos completamente diferentes} (K-Means basado en centroides y Jerárquico basado en distancias jerárquicas) \textbf{coinciden en $k=2$ con tamaños similares} (~12\,\% / ~88\,\%). Esta coincidencia es la mejor validación posible: la estructura encontrada es una propiedad real del dataset y no un artefacto de un método concreto. El dendrograma del jerárquico, además, aporta una herramienta de diagnóstico visual única que confirma visualmente que $K=2$ corresponde al corte natural del dataset.
+
+\subsection{Modelos descartados: DBSCAN y HDBSCAN}
+
+Los modelos basados en densidad (DBSCAN y HDBSCAN) se descartan como propuesta principal por los siguientes motivos:
+
+\begin{itemize}
+    \item \textbf{Elevado porcentaje de ruido}: DBSCAN clasifica el 49,3\,\% de los clientes como atípicos (casi la mitad del dataset queda sin asignar a ningún segmento) y HDBSCAN el 26,0\,\%. Para un proyecto de segmentación cuyo objetivo es accionar sobre toda la base de clientes, esto es una limitación crítica.
+    \item \textbf{Presencia de clusters minúsculos sin valor de negocio}: DBSCAN identifica un \textit{cluster} de solo 2 clientes y otro de 16. Aunque estadísticamente puedan mejorar las métricas, no son operativos para diseñar campañas comerciales.
+    \item \textbf{Métricas inferiores}: silueta de 0,3386 (DBSCAN) y 0,248 (HDBSCAN), claramente por debajo de los modelos seleccionados.
+    \item \textbf{Tamaños muy desbalanceados en HDBSCAN}: con 8 \textit{clusters} y un grupo mayoritario de 1.360 clientes frente a algunos de menos de 100, el peso de los \textit{clusters} pequeños en una estrategia comercial es limitado.
+\end{itemize}
+
+No obstante, el ejercicio de probarlos ha sido valioso porque demuestra que se han explorado enfoques alternativos basados en densidad y permite validar, por contraste, la elección final.
+
+\subsection{Conclusión final}
+
+La segmentación seleccionada divide la base de clientes en \textbf{dos grupos}, con tamaños aproximados del 12,7\,\% y 87,3\,\%. Esta estructura ha sido encontrada de forma independiente por dos algoritmos distintos (K-Means y Jerárquico), lo que aporta robustez metodológica. La propuesta final es por tanto utilizar K-Means como modelo de producción, con el Clustering Jerárquico como alternativa de validación cruzada.
+
+
+\newpage
+% #############################################################################
+% PARTE III — CONCLUSIONES Y REFLEXIÓN FINAL
+% #############################################################################
+\part*{\textcolor{azultfm}{Parte III — Conclusiones y reflexión final}}
+\addcontentsline{toc}{section}{\textbf{PARTE III — CONCLUSIONES Y REFLEXIÓN}}
+\vspace{0.5cm}
+
+Esta parte integra las conclusiones de los dos proyectos desarrollados, reflexiona sobre las diferencias metodológicas entre ambos, recoge los aprendizajes transversales del equipo y cierra con una conclusión global del trabajo.
+
+\section{Conclusiones del proyecto de regresión}
+
+El modelo seleccionado para la predicción de ventas diarias es \textbf{XGBoost}, que obtuvo el mejor rendimiento entre los seis algoritmos evaluados (RMSE de 19.604 GBP, R$^2$ de 0,56, MAE de 9.198 GBP), superando ampliamente al \textit{baseline} y al resto de modelos.
+
+\textbf{Por qué XGBoost gana al resto.} La superioridad de XGBoost no se debe únicamente a su menor RMSE, sino a ventajas estructurales. Frente a ARIMA, que produce una predicción prácticamente plana al ser un modelo univariante, XGBoost incorpora 23 variables explicativas y modela las interacciones no lineales entre ellas. Frente a Prophet, que descompone bien la serie pero infravalora sistemáticamente los picos de diciembre, el \textit{boosting} secuencial se adapta mejor a los picos puntuales. Y frente a Random Forest, que comparte exactamente el mismo pipeline de 23 features, la corrección secuencial de errores del \textit{boosting} aprovecha esas variables mucho mejor que el promediado paralelo del \textit{bagging} (R$^2$ de 0,56 frente a 0,14).
+
+\textbf{Limitaciones reconocidas.} A pesar de ser el mejor modelo, XGBoost presenta limitaciones que conviene reconocer con honestidad. Su R$^2$ de 0,56 indica que explica algo más de la mitad de la varianza, lo que deja un margen de mejora. El modelo es \textbf{difícil de interpretar} desde el punto de vista de negocio: cada predicción es la suma de cientos de correcciones secuenciales, difíciles de atribuir a causas concretas sin herramientas como SHAP. Además, es sensible a clientes con comportamiento muy atípico (los llamados ``clientes ballena''), lo que refuerza la importancia del preprocesado previo. Por último, la disponibilidad de un único año de histórico limita la capacidad de aprender el patrón anual completo.
+
+\textbf{Aplicabilidad práctica.} El modelo es operativo para apoyar la planificación a corto plazo: planificación semanal de \textit{stock} con un horizonte de dos a cuatro semanas, y apoyo a la toma de decisiones sobre campañas comerciales al identificar los días de mayor potencial de venta. Para horizontes mayores sería necesario ampliar el histórico con varios años de datos.
+
+\section{Conclusiones del proyecto de clustering}
+
+El modelo seleccionado para la segmentación de clientes es \textbf{K-Means} (versión mejorada con PCA + LOF), que divide la base de clientes en dos grupos bien diferenciados con una calidad de agrupación buena (silueta de 0,5257) sobre datos reducidos mediante PCA.
+
+\textbf{Resultados obtenidos.} El modelo consigue una segmentación clara y consistente en dos grupos: uno mayoritario con el 87,3 \% de los clientes y otro minoritario con el 12,7 \%. Al intentar crear más grupos, los resultados empeoraban claramente (la silueta cae de 0,5257 en $k=2$ a 0,2627 en $k=3$), confirmando que dos segmentos es la opción más adecuada.
+
+\textbf{Por qué K-Means es el modelo elegido.} Aunque el clustering jerárquico obtiene una silueta superior (0,7403), se selecciona K-Means por su mayor simplicidad, rapidez y reproducibilidad, que lo hacen más operativo. Además, la elección de $k=2$ no depende de una sola medida: las tres métricas internas (silueta, Calinski-Harabasz y Davies-Bouldin) coinciden en señalar la misma solución óptima, lo que aporta confianza y solidez.
+
+\textbf{Validación cruzada entre algoritmos distintos.} El resultado más relevante del análisis es que \textbf{dos algoritmos basados en lógicas matemáticamente distintas} (K-Means, basado en centroides, y el jerárquico, basado en distancias) llegan a la \textbf{misma estructura subyacente}: dos clusters con tamaños del orden del 12 \% y 88 \%. Esta convergencia entre enfoques independientes constituye una validación cruzada que permite concluir que la estructura encontrada es una propiedad real del dataset, y no un artefacto de un algoritmo concreto.
+
+\textbf{Por qué se descartan DBSCAN y HDBSCAN.} Los modelos basados en densidad se descartan por motivos de aplicabilidad. DBSCAN clasifica el 49,3 \% de los clientes como ruido, dejando casi la mitad de la base sin asignar, y genera \textit{clusters} minúsculos (de 2 y 16 clientes). HDBSCAN reduce el ruido al 26 \% pero genera ocho \textit{clusters} muy desbalanceados (de 68 a 1.360 clientes). Ambos son útiles como ejercicio de exploración técnica, pero no operativos para una estrategia de \textit{marketing} que requiera actuar sobre toda la base de clientes.
+
+\textbf{Interpretación de negocio y aplicabilidad.} La segmentación identifica dos perfiles claramente diferenciados, cuya lectura de negocio es directa. El \textbf{cluster mayoritario} (en torno al 88\,\% de los clientes) concentra sus compras en días laborables y presenta una baja proporción de actividad en fin de semana; este patrón es compatible con un perfil de cliente \textbf{empresarial o mayorista (B2B)}, que realiza compras planificadas dentro del horario laboral. El \textbf{cluster minoritario} (en torno al 12\,\%) presenta el patrón inverso, con alta proporción de compras en fin de semana, compatible con un perfil de \textbf{consumidor final (B2C)} que compra fuera del horario de oficina. La variable que mejor discrimina entre ambos grupos es el porcentaje de compras en fin de semana, lo que confirma el valor del \textit{feature engineering} de comportamiento temporal descrito en la Parte II.
+
+\section{Recomendaciones de negocio y valor aportado}
+
+Más allá de la calidad estadística de la segmentación, su utilidad real reside en las decisiones de negocio que habilita. A continuación se traduce la segmentación en una propuesta de actuación diferenciada por segmento, que constituye el principal valor del proyecto de \textit{clustering} para la empresa.
+
+\subsection{Estrategia para el segmento mayoritario (B2B)}
+
+Este segmento, al concentrar la gran mayoría de los clientes y, presumiblemente, el grueso de la facturación por su naturaleza mayorista, debe tratarse como la \textbf{base de negocio a proteger}. Las acciones recomendadas son:
+
+\begin{itemize}
+    \item \textbf{Programa de fidelización y descuentos por volumen}, que premie la recurrencia y el tamaño de pedido característicos de un comprador profesional.
+    \item \textbf{Gestión de cuentas} para los clientes de mayor valor dentro del segmento, con atención comercial personalizada y condiciones preferentes.
+    \item \textbf{Comunicación en horario y canal profesional} (correo electrónico en días laborables), alineada con su patrón de compra entre semana.
+    \item \textbf{Alertas de recompra y reaprovisionamiento} basadas en el tiempo medio entre compras, anticipándose a la siguiente necesidad del cliente.
+\end{itemize}
+
+\subsection{Estrategia para el segmento minoritario (B2C)}
+
+Aunque más reducido, este segmento representa una \textbf{oportunidad de crecimiento} con una lógica de consumo distinta, que requiere un enfoque de \textit{marketing} de gran consumo:
+
+\begin{itemize}
+    \item \textbf{Campañas dirigidas a fin de semana y festivos}, coincidiendo con su ventana natural de compra.
+    \item \textbf{Promociones orientadas al consumo final}: packs de regalo, novedades estacionales y ofertas por tiempo limitado.
+    \item \textbf{Comunicación emocional y visual} a través de canales orientados al consumidor (redes sociales, \textit{newsletter} de novedades), frente al tono transaccional del segmento B2B.
+    \item \textbf{Acciones de captación y recurrencia}, dado que el consumidor final tiende a una menor fidelidad espontánea que el cliente profesional.
+\end{itemize}
+
+\subsection{Cómo medir el impacto}
+
+Para que la segmentación aporte valor de forma sostenida, debe integrarse en el ciclo operativo de la empresa y medirse. Se recomienda: (i) exportar la asignación de cada cliente a su segmento al CRM, aprovechando la reproducibilidad de K-Means; (ii) reejecutar la segmentación de forma periódica para capturar la migración de clientes entre segmentos a lo largo del tiempo; y (iii) medir el efecto de las acciones diferenciadas mediante indicadores por segmento (tasa de recompra, valor medio de pedido y tasa de retención), comparando su evolución frente a la situación previa a la segmentación.
+
+\subsection{Limitaciones de la interpretación}
+
+La lectura B2B/B2C es una interpretación fundamentada en los patrones de comportamiento observados (principalmente la distribución de compras entre semana y fin de semana), pero no una clasificación verificada con datos externos sobre la naturaleza jurídica real de cada cliente. Constituye, por tanto, una hipótesis de trabajo sólida y accionable, que la empresa podría confirmar cruzando la segmentación con información adicional de su CRM (tipo de cliente, sector, volumen contratado) en una fase posterior.
+
+\section{Diferencias metodológicas entre ambos proyectos}
+
+Los dos proyectos, aunque parten del mismo dataset, ilustran diferencias fundamentales entre el aprendizaje supervisado y el no supervisado.
+
+En \textbf{regresión} existe una variable objetivo (las ventas diarias) y una verdad de referencia contra la que medir el error, lo que permite dividir los datos en \textit{train}, validación y test y usar métricas de error como RMSE o MAE. En \textbf{clustering} no existe variable objetivo: no hay una respuesta ``correcta'' contra la que comparar, por lo que la evaluación se apoya en métricas internas (silueta, Davies-Bouldin) y, sobre todo, en la interpretabilidad de los grupos resultantes.
+
+Otra diferencia relevante es el \textbf{tratamiento de los \textit{outliers}}. En la regresión de ventas, los picos extremos (campañas, festivos) son a menudo \textbf{señal} valiosa que el modelo debe aprender, por lo que se conservan de forma selectiva mediante la regla de negocio de festivos. En el clustering de clientes, los valores extremos (los ``clientes ballena'') tienden a ser \textbf{ruido} que distorsiona los centroides, por lo que se eliminan antes del entrenamiento. El mismo fenómeno (un valor extremo) recibe un tratamiento opuesto según el objetivo del análisis.
+
+Finalmente, la \textbf{estacionalidad} es el patrón dominante en la regresión (la dinámica temporal de las ventas), mientras que en el clustering lo determinante es el comportamiento agregado de cada cliente, donde la dimensión temporal se resume en variables como la recencia o la frecuencia.
+
+\section{Aprendizajes transversales}
+
+\textbf{El preprocesado es más decisivo que el algoritmo.} El mayor aprendizaje del proyecto es que la calidad de los datos condiciona los resultados más que la elección del modelo. Transformar los datos transaccionales en información de comportamiento de clientes, tratar los valores extremos y reducir la dimensionalidad con PCA fueron las palancas que más impacto tuvieron en la calidad de los resultados, por encima de la sofisticación del algoritmo.
+
+\textbf{Probar varios modelos es una necesidad metodológica.} No es posible defender un modelo como ``el mejor'' sin haberlo contrastado con alternativas. La comparativa sistemática es la que permite justificar la elección con evidencia, y además aporta \textit{insights} valiosos: por ejemplo, que el \textit{feature engineering} manual supera al \textit{deep learning} cuando el dataset es pequeño, o que dos algoritmos de clustering distintos validan mutuamente una misma estructura.
+
+\textbf{Ninguna métrica única es suficiente.} En regresión, el caso de la Regresión Polinómica (con un RMSE engañosamente bajo pero un R$^2$ negativo) demuestra que mirar una sola métrica puede llevar a conclusiones erróneas. En clustering, la silueta debe completarse con el porcentaje de ruido, el equilibrio de tamaños y la interpretabilidad de negocio.
+
+\textbf{Cada algoritmo requiere su propio preprocesado.} No es válido aplicar el mismo pipeline a todos los modelos: cada algoritmo tiene supuestos distintos (escalado, codificación, reducción de dimensionalidad) que deben respetarse para obtener resultados fiables.
+
+\textbf{La complejidad debe ajustarse al volumen de datos.} El fracaso de LSTM frente a modelos más simples ilustra que las arquitecturas más complejas no son siempre mejores: requieren volúmenes de datos que no siempre están disponibles.
+
+\section{Reflexión sobre el trabajo en equipo}
+
+El desarrollo de este Trabajo Final de Máster ha constituido una experiencia de aprendizaje integral, al requerir la aplicación transversal de las competencias adquiridas durante el programa en un contexto de resolución de problemas reales. La estructura del proyecto, orientada a simular un encargo profesional, ha favorecido la consolidación de conocimientos que de otro modo habrían permanecido en un plano puramente teórico.
+
+El proyecto ha exigido recorrer el ciclo completo de un problema analítico: desde la definición del problema y la exploración de soluciones alternativas, hasta la selección del modelo óptimo en función de las métricas y la justificación técnica de dicha elección. Este proceso ha reforzado la capacidad de análisis crítico y toma de decisiones basada en evidencia.
+
+El principal reto técnico ha sido la comprensión e interpretación rigurosa de cada modelo de forma individual: identificar sus supuestos, entender el comportamiento de sus parámetros y saber interpretar correctamente sus métricas. A nivel metodológico, la gestión del trabajo colaborativo supuso también un desafío significativo, especialmente en la coordinación de tareas, la trazabilidad del trabajo de cada integrante y la gestión de dependencias entre fases, donde un error puntual puede comprometer la integridad del resultado global.
+
+No obstante, precisamente esos elementos de mayor exigencia han sido los que más valor han aportado. La coordinación inicial del grupo en torno a una limpieza común y un dataset compartido evitó duplicidades y aseguró la consistencia entre los distintos modelos. El reparto de algoritmos entre los miembros permitió avanzar en paralelo y funcionó además como mecanismo de validación cruzada implícita: que dos personas obtengan resultados coherentes con algoritmos diferentes sobre los mismos datos refuerza la fiabilidad de los hallazgos. La necesidad de justificar las decisiones técnicas frente a un interlocutor externo desarrolló la capacidad de comunicar de forma clara y fundamentada.
+
+\section{Conclusión global del TFM}
+
+El proyecto demuestra que un mismo dataset de transacciones de comercio electrónico puede abordarse desde dos enfoques analíticos complementarios que, juntos, ofrecen una visión completa del negocio. Por un lado, el enfoque de \textbf{regresión} permite predecir el comportamiento futuro de las ventas diarias, respondiendo a la pregunta de \textit{qué va a pasar} y facilitando la planificación operativa del \textit{stock} y de las campañas. Por otro lado, el enfoque de \textbf{clustering} permite entender la estructura de la base de clientes, respondiendo a la pregunta de \textit{a quién se está atendiendo} y permitiendo diseñar estrategias de \textit{marketing} diferenciadas.
+
+La integración de ambos enfoques permite pasar de la simple descripción de los datos a una propuesta accionable: anticipar cuánto se va a vender y, simultáneamente, saber a qué tipo de cliente se le está vendiendo. Este es, en definitiva, el objetivo último de un proyecto de ciencia de datos en un contexto empresarial real, y constituye una validación práctica de las competencias desarrolladas a lo largo del máster.
+
+\end{document}
